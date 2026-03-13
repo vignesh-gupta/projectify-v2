@@ -1,10 +1,12 @@
-import { Geist, Geist_Mono, Noto_Sans } from "next/font/google"
+import { Geist_Mono, Noto_Sans } from "next/font/google"
 
-import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@workspace/ui/lib/utils";
+import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server"
+import "@workspace/ui/globals.css"
+import { cn } from "@workspace/ui/lib/utils"
+import { ConvexClientProvider } from "./ConvexClientProvider"
 
-const notoSans = Noto_Sans({variable:'--font-sans'})
+const notoSans = Noto_Sans({ variable: "--font-sans" })
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
@@ -17,14 +19,23 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", notoSans.variable)}
-    >
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
-    </html>
+    <ConvexAuthNextjsServerProvider>
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={cn(
+          "antialiased",
+          fontMono.variable,
+          "font-sans",
+          notoSans.variable
+        )}
+      >
+        <body>
+          <ConvexClientProvider>
+            <ThemeProvider>{children}</ThemeProvider>
+          </ConvexClientProvider>
+        </body>
+      </html>
+    </ConvexAuthNextjsServerProvider>
   )
 }
