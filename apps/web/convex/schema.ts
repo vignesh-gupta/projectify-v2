@@ -12,16 +12,20 @@ const schema = defineSchema({
       v.literal("maintenance"),
       v.literal("inactive")
     ),
-    dueDate: v.number(),
-    iconStorageId: v.optional(v.id("_storage")),
+    dueDate: v.optional(v.number()), // Made optional for flexibility
+    iconStorageId: v.optional(v.id("_storage")), // Null = show project initials
+    createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index("by_status", ["status"])
-    .index("by_due_date", ["dueDate"]),
+    .index("by_due_date", ["dueDate"])
+    .index("by_created_at", ["createdAt"]),
 
   memberships: defineTable({
     projectId: v.id("projects"),
     userId: v.id("users"),
     role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+    joinedAt: v.number(),
   })
     .index("by_project", ["projectId"])
     .index("by_user", ["userId"])
@@ -39,10 +43,15 @@ const schema = defineSchema({
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     dueDate: v.optional(v.number()),
     assigneeUserId: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"), // Track who created the task
   })
     .index("by_project", ["projectId"])
     .index("by_status", ["status"])
-    .index("by_assignee", ["assigneeUserId"]),
+    .index("by_assignee", ["assigneeUserId"])
+    .index("by_project_status", ["projectId", "status"]) // Efficient filtering
+    .index("by_created_at", ["createdAt"]),
 })
 
 export default schema
