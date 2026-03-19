@@ -10,12 +10,16 @@ import { useAuthActions } from "@convex-dev/auth/react"
 import { LogOut, Monitor, Moon, Sun, ChevronDown, User } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 
 export function UserProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false)
   const { theme, setTheme } = useTheme()
   const { signOut } = useAuthActions()
   const { state } = useSidebar()
+
+  const user = useQuery(api.functions.auth.currentUser)
 
   const handleSignOut = async () => {
     await signOut()
@@ -36,12 +40,23 @@ export function UserProfileDropdown() {
             onClick={() => setIsOpen(!isOpen)}
             className="w-full"
           >
-            <div className="flex aspect-square size-8 items-center justify-center rounded-none bg-sidebar-primary text-sidebar-primary-foreground">
-              <User className="size-4" />
+            <div className="flex size-8 items-center justify-center">
+              {user?.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.image}
+                  alt="User Avatar"
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <User className="size-4" />
+              )}
             </div>
             <div className="flex flex-col gap-0.5 text-left leading-none">
-              <span className="font-semibold">Alex Sterling</span>
-              <span className="text-xs text-muted-foreground">Pro Account</span>
+              <span className="font-semibold">
+                {user?.name || user?.email || "Unknown User"}
+              </span>
+              {/* <span className="text-xs text-muted-foreground">Pro Account</span> */}
             </div>
             <ChevronDown
               className={`ml-auto size-4 transition-transform ${
