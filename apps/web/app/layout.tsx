@@ -5,6 +5,7 @@ import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server"
 import "@workspace/ui/globals.css"
 import { cn } from "@workspace/ui/lib/utils"
 import { ConvexClientProvider } from "./ConvexClientProvider"
+import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 const notoSans = Noto_Sans({ variable: "--font-sans" })
 
@@ -32,7 +33,9 @@ export default function RootLayout({
       >
         <body>
           <ConvexClientProvider>
-            <ThemeProvider>{children}</ThemeProvider>
+            <ThemeProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+            </ThemeProvider>
           </ConvexClientProvider>
         </body>
       </html>

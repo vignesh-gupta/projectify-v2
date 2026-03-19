@@ -118,6 +118,10 @@ There are currently no test commands configured. Tests would be added at the wor
 - App-specific components go in `apps/web/components/`
 - shadcn/ui components use Radix UI primitives with Tailwind styling
 - Use `clsx` or `tailwind-merge` for conditional Tailwind classes
+- **Always use Next.js file conventions**: `layout.tsx`, `loading.tsx`, `error.tsx`, `page.tsx`, and `not-found.tsx` for routes
+- Create `loading.tsx` for loading states to show instant feedback while content loads
+- Create `error.tsx` for error boundaries to handle runtime errors gracefully
+- Use Server Components by default; mark with `"use client"` only when needed (hooks, events, browser APIs)
 
 ### Styling
 - **Tailwind CSS v4**: Use utility-first approach; avoid inline styles
@@ -147,7 +151,34 @@ There are currently no test commands configured. Tests would be added at the wor
 - Workspace packages are referenced with `"workspace:*"` syntax
 - Internal packages use `@workspace/` naming (e.g., `@workspace/ui`)
 
+### Layout & Navigation
+- **Sidebar**: Use custom `AppSidebar` component at 100dvh height with fixed positioning
+- **Main content**: Must be scrollable with `overflow-y-auto` on the main container
+- **User profile dropdown**: Includes theme toggle (light/dark/system) and logout functionality
+- Navigation items should highlight the active route using `usePathname()` from `next/navigation`
+- Sidebar should be sticky/fixed while main content scrolls independently
+
 ## Common Tasks
+
+### Creating New Routes
+1. Create directory under `app/` following Next.js App Router conventions
+2. Add `page.tsx` for the route content
+3. Add `layout.tsx` if the route needs a specific layout (e.g., sidebar, header)
+4. Add `loading.tsx` for loading UI (shown while page loads)
+5. Add `error.tsx` for error handling (client component with error boundary)
+6. Use Server Components by default for better performance
+7. Example structure:
+   ```
+   app/dashboard/
+   ├── layout.tsx       # Dashboard layout with sidebar
+   ├── loading.tsx      # Loading skeleton
+   ├── error.tsx        # Error boundary
+   ├── page.tsx         # Dashboard home
+   └── settings/
+       ├── page.tsx     # Settings page
+       ├── loading.tsx  # Settings loading state
+       └── error.tsx    # Settings error handling
+   ```
 
 ### Adding a New Component
 1. Create the component in `packages/ui/src/components/ComponentName.tsx`
@@ -168,6 +199,19 @@ There are currently no test commands configured. Tests would be added at the wor
 ### Running Convex Locally
 - Run `pnpm cdev` in `apps/web/` to start the local Convex development server
 - This enables hot-reloading for backend functions
+
+### Authentication with Convex Auth
+- Use `useAuthActions()` hook from `@convex-dev/auth/react` to access auth methods
+- `signOut()` for logout functionality
+- User session is managed automatically by Convex Auth
+- Wrap app with `ConvexAuthNextjsServerProvider` (already in root layout)
+
+### Using shadcn/ui Components
+- Use shadcn MCP tools for discovering and viewing components
+- Components are installed in `packages/ui/src/components/` 
+- Common components: Button, Input, Dropdown Menu, Dialog, etc.
+- Always check existing components before creating new ones
+- For custom variations, extend existing shadcn components rather than creating from scratch
 
 ## MCP Servers
 

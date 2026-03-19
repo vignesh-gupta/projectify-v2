@@ -1,258 +1,322 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { motion, Variants } from "motion/react"
 import {
   ArrowRight,
   CheckCircle2,
-  CirclePlay,
-  Gauge,
-  Layers3,
-  Sparkles,
+  Layers,
+  Shield,
   TrendingUp,
-  Workflow,
+  Users,
+  Zap,
 } from "lucide-react"
+import Link from "next/link"
 
+import { Header } from "@/components/header"
+import { HeroSection, LogosSection } from "@/components/hero"
 import { Button } from "@workspace/ui/components/button"
-import { cn } from "@workspace/ui/lib/utils"
-
-type RevealProps = {
-  children: React.ReactNode
-  className?: string
-  delay?: number
-}
-
-function Reveal({ children, className, delay = 0 }: RevealProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-  const [reducedMotion, setReducedMotion] = useState(false)
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
-    const onChange = () => setReducedMotion(media.matches)
-    onChange()
-    media.addEventListener("change", onChange)
-    return () => media.removeEventListener("change", onChange)
-  }, [])
-
-  useEffect(() => {
-    if (reducedMotion) {
-      setVisible(true)
-      return
-    }
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.16 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [reducedMotion])
-
-  return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={cn(
-        "transform-gpu transition-all duration-700 ease-out motion-reduce:transform-none motion-reduce:transition-none",
-        visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0",
-        className
-      )}
-    >
-      {children}
-    </div>
-  )
-}
 
 const features = [
   {
-    icon: Workflow,
-    title: "Unified planning flow",
-    text: "Roadmaps, milestones, and execution share one source of truth.",
+    icon: Zap,
+    title: "Lightning Fast",
+    description:
+      "Real-time updates with Convex. Changes sync instantly across your team.",
   },
   {
-    icon: Gauge,
-    title: "Clear progress signals",
-    text: "Spot risks early and keep stakeholders aligned without extra meetings.",
+    icon: Shield,
+    title: "Secure by Default",
+    description:
+      "Enterprise-grade security with role-based access control built in.",
+  },
+  {
+    icon: Users,
+    title: "Team Collaboration",
+    description:
+      "Seamless collaboration with powerful project and task management.",
   },
   {
     icon: TrendingUp,
-    title: "Better outcomes over time",
-    text: "Consistent process creates faster releases and higher team confidence.",
+    title: "Track Progress",
+    description:
+      "Visual progress tracking and analytics to keep projects on schedule.",
   },
 ]
 
-export default function Page() {
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+}
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut",
+    },
+  },
+}
+
+export default function LandingPage() {
   return (
-    <main className="bg-background text-foreground">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(circle_at_top,oklch(0.74_0.12_265_/_0.12),transparent_62%)]" />
+    <div className="relative min-h-screen overflow-hidden bg-background">
+      {/* Animated background gradient */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,oklch(0.35_0.15_264/0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,oklch(0.35_0.15_264/0.08),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,oklch(0.35_0.15_264/0.1),transparent_60%)]" />
+      </div>
 
-      <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6">
-          <div className="inline-flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="size-4 text-primary" />
-            Projectify
-          </div>
-          <nav className="hidden items-center gap-6 text-xs text-muted-foreground md:flex">
-            <a className="transition-colors hover:text-foreground" href="#features">
-              Features
-            </a>
-            <a className="transition-colors hover:text-foreground" href="#workflow">
-              Workflow
-            </a>
-            <a className="transition-colors hover:text-foreground" href="#cta">
-              Start
-            </a>
-          </nav>
-          <Button size="sm" className="h-8 px-3 text-xs">
-            Get started
-          </Button>
-        </div>
-      </header>
+      {/* Header */}
+      <Header />
 
-      <section className="mx-auto w-full max-w-6xl px-6 pb-20 pt-24 sm:pt-28">
-        <Reveal className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">
-          <Layers3 className="size-3.5" />
-          Built for modern product teams
-        </Reveal>
-
-        <Reveal delay={80} className="mt-6 max-w-4xl">
-          <h1 className="text-balance text-4xl leading-tight font-semibold tracking-tight sm:text-6xl">
-            Calm, elegant project execution from plan to launch.
-          </h1>
-        </Reveal>
-
-        <Reveal delay={140} className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          Projectify helps your team move with clarity using a single, focused
-          workspace for planning, delivery, and stakeholder updates.
-        </Reveal>
-
-        <Reveal delay={220} className="mt-9 flex flex-wrap items-center gap-3">
-          <Button className="group h-11 px-5">
-            Start free
-            <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
-          </Button>
-          <Button variant="outline" className="group h-11 px-5">
-            <CirclePlay className="mr-2 size-4 transition-transform group-hover:scale-110" />
-            View demo
-          </Button>
-        </Reveal>
-
-        <Reveal delay={280} className="mt-12 grid gap-3 sm:grid-cols-3">
-          {[
-            ["Cycle time", "32% faster"],
-            ["On-time delivery", "96%"],
-            ["Team confidence", "4.9 / 5"],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="rounded-2xl bg-muted/40 px-4 py-4 transition-all duration-300 hover:bg-muted/60"
-            >
-              <div className="text-xs text-muted-foreground">{label}</div>
-              <div className="mt-1 text-xl font-semibold">{value}</div>
-            </div>
-          ))}
-        </Reveal>
+      {/* Hero Section */}
+      <section className="relative z-10 container mx-auto px-6 pt-20 pb-32 sm:pt-32">
+        <HeroSection />
       </section>
 
-      <section id="features" className="border-y bg-muted/25">
-        <div className="mx-auto w-full max-w-6xl px-6 py-[4.5rem]">
-          <Reveal className="mb-10 text-center">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              A simpler way to keep momentum
+      {/* Logos Section */}
+      <section className="relative z-10 container mx-auto px-6">
+        <LogosSection />
+      </section>
+
+      {/* Features Grid */}
+      <section
+        id="features"
+        className="relative z-10 border-t border-border bg-card/50 backdrop-blur-sm"
+      >
+        <div className="container mx-auto px-6 py-24">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+            className="mb-16 text-center"
+          >
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
+              Everything you need to succeed
             </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-              Everything you need to prioritize, deliver, and communicate progress.
+            <p className="mt-4 text-lg text-muted-foreground">
+              Powerful features designed for modern teams
             </p>
-          </Reveal>
+          </motion.div>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            {features.map((feature, i) => (
-              <Reveal key={feature.title} delay={i * 90}>
-                <article className="group">
-                  <div className="mb-4 inline-flex size-11 items-center justify-center rounded-xl bg-background shadow-sm transition-transform duration-300 group-hover:-translate-y-1">
-                    <feature.icon className="size-5 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-medium">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {feature.text}
-                  </p>
-                </article>
-              </Reveal>
+          <motion.div
+            className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {features.map((feature) => (
+              <motion.div
+                key={feature.title}
+                variants={itemVariants}
+                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-8 transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5"
+              >
+                <motion.div
+                  className="mb-4 inline-flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300"
+                  whileHover={{ scale: 1.1 }}
+                >
+                  <feature.icon className="size-6" />
+                </motion.div>
+                <h3 className="mb-2 text-xl font-semibold text-foreground">
+                  {feature.title}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {feature.description}
+                </p>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      <section id="workflow" className="mx-auto w-full max-w-6xl px-6 py-[4.5rem]">
-        <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr] md:items-start">
-          <Reveal>
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Workflow
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-                One clear path from strategy to shipped work
-              </h2>
+      {/* Benefits Section */}
+      <section
+        id="benefits"
+        className="relative z-10 container mx-auto px-6 py-24"
+      >
+        <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
+              Built for high-performing teams
+            </h2>
+            <p className="mt-6 text-lg text-muted-foreground">
+              Projectify helps teams of all sizes deliver projects faster with
+              better collaboration and complete visibility.
+            </p>
+
+            <motion.div
+              className="mt-10 space-y-6"
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+            >
+              {[
+                "Real-time collaboration with team members",
+                "Track progress with visual dashboards",
+                "Assign tasks and set priorities",
+                "Role-based access control",
+                "Mobile-ready responsive design",
+              ].map((benefit, i) => (
+                <motion.div
+                  key={i}
+                  variants={itemVariants}
+                  className="flex items-start gap-3"
+                >
+                  <CheckCircle2 className="size-6 shrink-0 text-primary" />
+                  <span className="text-foreground">{benefit}</span>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <motion.div
+              className="mt-10"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              viewport={{ once: true }}
+            >
+              <Link href="/dashboard">
+                <Button size="lg" className="group">
+                  Get Started Now
+                  <ArrowRight className="ml-2 size-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            </motion.div>
+          </motion.div>
+
+          <motion.div
+            className="relative"
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <div className="aspect-square overflow-hidden rounded-3xl border border-border bg-linear-to-br from-primary/20 via-card to-background p-12">
+              <motion.div
+                className="flex size-full flex-col items-center justify-center text-center"
+                initial={{ scale: 0.8, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                viewport={{ once: true }}
+              >
+                <div className="text-6xl font-bold text-primary">128</div>
+                <div className="mt-2 text-sm tracking-wider text-muted-foreground uppercase">
+                  Active Projects
+                </div>
+                <div className="mt-8 grid w-full grid-cols-2 gap-4">
+                  <motion.div
+                    className="rounded-xl border border-border bg-card/50 p-4"
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    <div className="text-2xl font-bold text-foreground">
+                      96%
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      On-Time
+                    </div>
+                  </motion.div>
+                  <motion.div
+                    className="rounded-xl border border-border bg-card/50 p-4"
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    <div className="text-2xl font-bold text-foreground">
+                      4.9
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Rating
+                    </div>
+                  </motion.div>
+                </div>
+              </motion.div>
             </div>
-          </Reveal>
-
-          <div className="space-y-6">
-            {[
-              {
-                title: "Define goals and outcomes",
-                text: "Turn initiatives into scoped, measurable deliverables.",
-              },
-              {
-                title: "Coordinate work without friction",
-                text: "Shared ownership and dependencies prevent bottlenecks.",
-              },
-              {
-                title: "Report progress effortlessly",
-                text: "Live updates and clear signals keep everyone in sync.",
-              },
-            ].map((item, i) => (
-              <Reveal key={item.title} delay={i * 100}>
-                <article className="flex gap-4">
-                  <div className="mt-1 inline-flex size-6 items-center justify-center rounded-full bg-primary/12 text-primary">
-                    <CheckCircle2 className="size-3.5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-medium">{item.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.text}</p>
-                  </div>
-                </article>
-              </Reveal>
-            ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      <section id="cta" className="mx-auto w-full max-w-6xl px-6 pb-[5.5rem]">
-        <Reveal className="rounded-3xl bg-gradient-to-br from-muted/70 via-card to-background p-8 text-center sm:p-12">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Ready to make delivery feel effortless?
+      {/* CTA Section */}
+      <section className="relative z-10 container mx-auto px-6 py-24">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true }}
+          className="overflow-hidden rounded-3xl border border-primary/20 bg-linear-to-br from-primary/10 via-card to-background p-12 text-center sm:p-16"
+        >
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
+            Ready to transform your workflow?
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm text-muted-foreground sm:text-base">
-            Keep the team aligned, reduce status overhead, and ship with confidence.
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+            Join thousands of teams already using Projectify to ship better
+            products faster.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button className="group h-11 px-6">
-              Get started
-              <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
-            </Button>
-            <Button variant="outline" className="h-11 px-6">
-              Talk to sales
-            </Button>
-          </div>
-        </Reveal>
+          <motion.div
+            className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <motion.div variants={itemVariants}>
+              <Link href="/dashboard">
+                <Button size="lg" className="group h-12 px-8 text-base">
+                  Get Started Free
+                  <ArrowRight className="ml-2 size-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-12 px-8 text-base"
+              >
+                Schedule a Demo
+              </Button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </section>
-    </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-border py-12">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Layers className="size-4" />
+              <span>© 2024 Projectify. All rights reserved.</span>
+            </div>
+            <div className="flex gap-6 text-sm text-muted-foreground">
+              <a href="#" className="transition-colors hover:text-foreground">
+                Privacy
+              </a>
+              <a href="#" className="transition-colors hover:text-foreground">
+                Terms
+              </a>
+              <a href="#" className="transition-colors hover:text-foreground">
+                Contact
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   )
 }
