@@ -86,10 +86,11 @@ export const listByProject = query({
 
     // Get tasks with optional status filter
     if (args.status) {
+      const status = args.status; // TypeScript type narrowing
       return await ctx.db
         .query("tasks")
         .withIndex("by_project_status", (q) =>
-          q.eq("projectId", args.projectId).eq("status", args.status)
+          q.eq("projectId", args.projectId).eq("status", status)
         )
         .collect();
     }

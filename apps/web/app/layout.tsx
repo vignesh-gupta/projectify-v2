@@ -1,6 +1,7 @@
 import { Geist_Mono, Noto_Sans } from "next/font/google"
 
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/toaster"
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server"
 import "@workspace/ui/globals.css"
 import { cn } from "@workspace/ui/lib/utils"
@@ -34,7 +35,10 @@ export default function RootLayout({
         <body>
           <ConvexClientProvider>
             <ThemeProvider>
-              <TooltipProvider>{children}</TooltipProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster />
+              </TooltipProvider>
             </ThemeProvider>
           </ConvexClientProvider>
         </body>
