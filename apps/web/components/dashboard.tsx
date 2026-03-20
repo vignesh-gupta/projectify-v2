@@ -74,25 +74,23 @@ export default function DashboardPage() {
   const projects: Project[] = useMemo(() => {
     if (!convexProjects) return []
 
-    return convexProjects
-      .filter((project) => project && project._id && project.title && project.description && project.status && project.updatedAt)
-      .map((project) => {
-        const statusInfo = getProjectStatus(project.status!)
-        return {
-          id: project._id! as string,
-          icon: getProjectIcon(project.title!),
-          iconBg: getProjectIconBg(project.status!),
-          title: project.title!,
-          description: project.description!,
-          status: statusInfo.label,
-          statusColor: statusInfo.color,
-          // eslint-disable-next-line react-hooks/purity
-          progress: Math.floor(Math.random() * 100), // TODO: Calculate actual progress from tasks
-          progressColor: getProgressColor(project.status!),
-          updated: formatRelativeTime(project.updatedAt!),
-          members: ["👤"], // TODO: Get actual member avatars from memberships
-        }
-      })
+    return convexProjects.map((project) => {
+      const statusInfo = getProjectStatus(project.status!)
+      return {
+        id: project._id! as string,
+        icon: getProjectIcon(project.title!),
+        iconBg: getProjectIconBg(project.status!),
+        title: project.title!,
+        description: project.description!,
+        status: statusInfo.label,
+        statusColor: statusInfo.color,
+        // eslint-disable-next-line react-hooks/purity
+        progress: Math.floor(Math.random() * 100), // TODO: Calculate actual progress from tasks
+        progressColor: getProgressColor(project.status!),
+        updated: formatRelativeTime(project.updatedAt!),
+        members: ["👤"], // TODO: Get actual member avatars from memberships
+      }
+    })
   }, [convexProjects])
 
   // Calculate stats
