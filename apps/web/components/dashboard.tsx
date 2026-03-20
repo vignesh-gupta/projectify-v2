@@ -1,87 +1,135 @@
 "use client"
 
+import { useState, useMemo } from "react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { DashboardHeader } from "./dashboard/dashboard-header"
-import { StatsGrid, Stat } from "./dashboard/stats-grid"
+import { StatsGrid, type Stat } from "./dashboard/stats-grid"
 import { ProjectsList } from "./dashboard/projects-list"
-import { Project } from "./dashboard/project-card"
+import type { Project } from "./dashboard/project-card"
+import { CreateProjectDialog } from "./dashboard/create-project-dialog"
 
-// Mock data - will be replaced with real Convex queries
-const stats: Stat[] = [
-  {
-    label: "TOTAL TASKS",
-    value: "128",
-    change: "+12% vs last month",
-    trend: "up",
-    icon: "📊",
-  },
-  {
-    label: "ACTIVE PROJECTS",
-    value: "12",
-    detail: "8 On track / 4 At risk",
-    icon: "📁",
-  },
-  {
-    label: "HOURS LOGGED",
-    value: "42.5",
-    detail: "This week",
-    icon: "⏱️",
-  },
-  {
-    label: "TEAM MEMBERS",
-    value: "24",
-    avatars: ["👤", "👤", "👤", "+21"],
-    icon: "👥",
-  },
-]
+function getProjectIcon(title: string): string {
+  const icons = ["🎯", "🎨", "🎭", "📱", "💡", "🚀", "⚡", "🔥", "✨", "🌟"]
+  const index = title.charCodeAt(0) % icons.length
+  return icons[index] || "📁"
+}
 
-const projects: Project[] = [
-  {
-    id: 1,
-    icon: "🎯",
-    iconBg: "bg-primary",
-    title: "Q4 Marketing Campaign",
-    description:
-      "Strategy and creative asset development for the upcoming product launch, including cross-channel promotion and influencer partnerships.",
-    status: "ACTIVE",
-    statusColor: "text-success border-success",
-    progress: 65,
-    progressColor: "bg-primary",
-    updated: "2h ago",
-    members: ["👤", "👤"],
-  },
-  {
-    id: 2,
-    icon: "🎨",
-    iconBg: "bg-warning",
-    title: "v2.4 API Integration",
-    description:
-      "Legacy system migration and multi-endpoint architecture redesign for improved scalability and performance under increased load.",
-    status: "AT RISK",
-    statusColor: "text-warning border-warning",
-    progress: 22,
-    progressColor: "bg-warning",
-    updated: "1d ago",
-    members: ["👤"],
-  },
-  {
-    id: 3,
-    icon: "🎭",
-    iconBg: "bg-primary",
-    title: "Brand Guidelines Update",
-    description: "Refreshing visual identity, iconography set, and typography",
-    status: "ACTIVE",
-    statusColor: "text-success border-success",
-    progress: 92,
-    progressColor: "bg-primary",
-    updated: "10m ago",
-    members: ["👤", "👤", "👤"],
-  },
-]
+function getProjectIconBg(status: string): string {
+  switch (status) {
+    case "maintenance":
+      return "bg-warning"
+    case "inactive":
+      return "bg-muted"
+    default:
+      return "bg-primary"
+  }
+}
+
+function getProjectStatus(status: string): {
+  label: string
+  color: string
+} {
+  switch (status) {
+    case "maintenance":
+      return { label: "MAINTENANCE", color: "text-warning border-warning" }
+    case "inactive":
+      return { label: "INACTIVE", color: "text-muted-foreground border-muted" }
+    default:
+      return { label: "ACTIVE", color: "text-success border-success" }
+  }
+}
+
+function getProgressColor(status: string): string {
+  switch (status) {
+    case "maintenance":
+      return "bg-warning"
+    case "inactive":
+      return "bg-muted"
+    default:
+      return "bg-primary"
+  }
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const now = Date.now()
+  const diff = now - timestamp
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+
+  if (minutes < 1) return "just now"
+  if (minutes < 60) return `${minutes}m ago`
+  if (hours < 24) return `${hours}h ago`
+  return `${days}d ago`
+}
 
 export default function DashboardPage() {
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+
+  const convexProjects = useQuery(api.projects.list)
+  const isLoading = convexProjects === undefined
+
+  // Transform Convex projects to UI format
+  const projects: Project[] = useMemo(() => {
+    if (!convexProjects) return []
+
+    return convexProjects
+      .filter((project) => project && project._id && project.title && project.description && project.status && project.updatedAt)
+      .map((project) => {
+        const statusInfo = getProjectStatus(project.status!)
+        return {
+          id: project._id! as string,
+          icon: getProjectIcon(project.title!),
+          iconBg: getProjectIconBg(project.status!),
+          title: project.title!,
+          description: project.description!,
+          status: statusInfo.label,
+          statusColor: statusInfo.color,
+          // eslint-disable-next-line react-hooks/purity
+          progress: Math.floor(Math.random() * 100), // TODO: Calculate actual progress from tasks
+          progressColor: getProgressColor(project.status!),
+          updated: formatRelativeTime(project.updatedAt!),
+          members: ["👤"], // TODO: Get actual member avatars from memberships
+        }
+      })
+  }, [convexProjects])
+
+  // Calculate stats
+  const stats: Stat[] = useMemo(() => {
+    const projectCount = projects.length
+    const activeProjects = projects.filter((p) => p.status === "ACTIVE").length
+
+    return [
+      {
+        label: "TOTAL TASKS",
+        value: "0", // TODO: Get from tasks query
+        detail: "Coming soon",
+        icon: "📊",
+      },
+      {
+        label: "ACTIVE PROJECTS",
+        value: String(activeProjects),
+        detail: `${projectCount} total`,
+        icon: "📁",
+      },
+      {
+        label: "HOURS LOGGED",
+        value: "0",
+        detail: "Coming soon",
+        icon: "⏱️",
+      },
+      {
+        label: "TEAM MEMBERS",
+        value: "1", // TODO: Get unique member count
+        detail: "You",
+        icon: "👥",
+      },
+    ]
+  }, [projects])
+
   const handleCreateProject = () => {
-    // TODO: Open create project modal/dialog
-    console.log("Create new project")
+    setIsCreateDialogOpen(true)
   }
 
   const handleProjectClick = (project: Project) => {
@@ -90,24 +138,34 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-full">
-      <DashboardHeader
-        activeProjectsCount={12}
-        teamsCount={3}
-        onCreateProject={handleCreateProject}
-      />
-
-      <div className="border-b border-border p-8">
-        <StatsGrid stats={stats} />
-      </div>
-
-      <div className="p-8">
-        <ProjectsList
-          projects={projects}
+    <>
+      <div className="min-h-full">
+        <DashboardHeader
+          activeProjectsCount={
+            projects.filter((p) => p.status === "ACTIVE").length
+          }
+          teamsCount={1}
           onCreateProject={handleCreateProject}
-          onProjectClick={handleProjectClick}
         />
+
+        <div className="border-b border-border p-8">
+          <StatsGrid stats={stats} isLoading={isLoading} />
+        </div>
+
+        <div className="p-8">
+          <ProjectsList
+            projects={projects}
+            isLoading={isLoading}
+            onCreateProject={handleCreateProject}
+            onProjectClick={handleProjectClick}
+          />
+        </div>
       </div>
-    </div>
+
+      <CreateProjectDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
+    </>
   )
 }

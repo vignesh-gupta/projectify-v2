@@ -1,7 +1,6 @@
 "use client"
 
 import { TrendingUp } from "lucide-react"
-import { motion, Variants } from "motion/react"
 
 export interface Stat {
   label: string
@@ -63,54 +62,11 @@ export function StatsGrid({ stats, isLoading, error }: StatsGridProps) {
     return null
   }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  }
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut",
-      },
-    },
-  }
-
-  const cardHoverVariants: Variants = {
-    initial: { y: 0, boxShadow: "0px 1px 3px rgba(0,0,0,0.1)" },
-    hover: {
-      boxShadow: "0px 12px 24px rgba(0,0,0,0.15)",
-      transition: {
-        duration: 0.3,
-        ease: "easeOut",
-      },
-    },
-  }
-
   return (
-    <motion.div
-      className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (
-        <motion.div key={stat.label} variants={itemVariants}>
-          <motion.div
-            className="h-full border border-border bg-card p-6 transition-all hover:border-primary/30"
-            variants={cardHoverVariants}
-            initial="initial"
-            whileHover="hover"
-          >
+        <div key={stat.label}>
+          <div className="h-full border border-border bg-card p-6 transition-all hover:border-primary/30">
             <div className="flex items-start justify-between">
               <div className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
                 {stat.label}
@@ -123,15 +79,10 @@ export function StatsGrid({ stats, isLoading, error }: StatsGridProps) {
               {stat.value}
             </div>
             {stat.change && (
-              <motion.div
-                className="mt-2 flex items-center gap-1 text-xs text-success"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
+              <div className="mt-2 flex items-center gap-1 text-xs text-success">
                 <TrendingUp className="size-3" />
                 {stat.change}
-              </motion.div>
+              </div>
             )}
             {stat.detail && (
               <div className="mt-2 text-xs text-muted-foreground">
@@ -150,9 +101,9 @@ export function StatsGrid({ stats, isLoading, error }: StatsGridProps) {
                 ))}
               </div>
             )}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       ))}
-    </motion.div>
+    </div>
   )
 }
