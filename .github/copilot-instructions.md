@@ -3,6 +3,7 @@
 ## Project Overview
 
 Projectify is a modern project management tool for small teams. It's a **monorepo** using Turborepo with:
+
 - **apps/web**: Next.js 16 frontend application
 - **packages/ui**: Shared UI component library (using shadcn/ui)
 - **packages/eslint-config**: Shared ESLint configuration
@@ -13,16 +14,19 @@ The backend is **Convex** (real-time database), and the frontend uses **Convex A
 ## Architecture
 
 ### Technology Stack
+
 - **Frontend**: Next.js 16 (React 19) with App Router, Tailwind CSS v4, shadcn/ui components
 - **Backend/Database**: Convex (serverless backend with real-time database)
-- **Auth**:  convex-auth for auth
+- **Auth**: convex-auth for auth
 - **State Management**: Zustand (if used)
 - **UI Framework**: shadcn/ui (Radix UI primitives + Tailwind CSS)
 - **Icons**: Lucide React
 - **Code Quality**: ESLint 9, Prettier, TypeScript 5.9
 
 ### Data Model (Convex Schema)
+
 The main entities are:
+
 - **users**: Handled by authTables (from @convex-dev/auth)
 - **projects**: Project records with title, description, status (development/maintenance/inactive), dueDate, optional icon
 - **memberships**: Links users to projects with roles (owner/admin/member)
@@ -31,6 +35,7 @@ The main entities are:
 Key indexing: projects (by_status, by_due_date), memberships (by_project, by_user, by_project_user), tasks (by_project, by_status, by_assignee)
 
 ### Directory Structure
+
 ```
 apps/web/
 ├── app/                    # Next.js App Router pages and layouts
@@ -56,6 +61,7 @@ packages/typescript-config/ # TypeScript configs for different targets
 ## Build, Test, and Lint Commands
 
 ### Root Workspace Commands
+
 Run from the project root (`projectify-v2/`):
 
 ```bash
@@ -73,6 +79,7 @@ pnpm typecheck        # TypeScript type checking across workspace
 ```
 
 ### Web App Specific Commands
+
 Run from `apps/web/`:
 
 ```bash
@@ -91,9 +98,11 @@ pnpm build            # Build Next.js app for production
 ```
 
 ### Running Tests
+
 There are currently no test commands configured. Tests would be added at the workspace root (`pnpm test`) or per-package as needed.
 
 ### Running a Single File/Component
+
 - **Lint a single file**: `cd apps/web && pnpm lint path/to/file.tsx`
 - **Type-check only**: `cd apps/web && pnpm typecheck`
 - **Format a file**: `pnpm format "apps/web/path/to/file.tsx"`
@@ -101,12 +110,14 @@ There are currently no test commands configured. Tests would be added at the wor
 ## Key Conventions
 
 ### TypeScript & Naming
+
 - Use **camelCase** for variables, functions, and props
 - Use **PascalCase** for React components and types
 - Use `v.string()`, `v.number()`, etc. from `convex/values` in schema.ts for type definitions
 - Always explicitly type function return values and parameters
 
 ### Convex Backend
+
 - Database functions live in `apps/web/convex/`
 - Schema is defined as a single object with `defineTable` for each table
 - Use `.index()` chaining to define indexes for performance
@@ -114,6 +125,7 @@ There are currently no test commands configured. Tests would be added at the wor
 - Export schema as `export default schema`
 
 ### Component Structure
+
 - Place shared UI components in `packages/ui/src/components/`
 - App-specific components go in `apps/web/components/`
 - shadcn/ui components use Radix UI primitives with Tailwind styling
@@ -123,38 +135,44 @@ There are currently no test commands configured. Tests would be added at the wor
 - Create `error.tsx` for error boundaries to handle runtime errors gracefully
 - Use Server Components by default; mark with `"use client"` only when needed (hooks, events, browser APIs)
 - **Feature folder structure**: Follow industry best practices for reusable components. Break down UI into separate components (e.g., ProjectList and ProjectCard as distinct components, not combined)
-- **Component states**: Always implement loading, error, and empty states for all components that fetch or display data
+- **Component states**: Always implement loading, error, and empty states for all components that fetch or display data. All the state should be in the same component file for better maintainability and readability. Avoid creating separate files for states unless the logic is complex enough to warrant it.
 - **Animations**: Never add onload animations (fade in, etc.) on internal app pages. Only use animations on landing page or public pages. Always confirm before adding animations.
 
 ### Styling
+
 - **Tailwind CSS v4**: Use utility-first approach; avoid inline styles
 - **Class merging**: Import and use `tailwind-merge` when overriding Tailwind classes
 - **Dark mode**: Next-themes handles dark mode with Tailwind's dark: prefix
 - Configure Tailwind in each package's `postcss.config.mjs` (for ui package) and web app's `next.config.mjs`
 
 ### Code Formatting
+
 - **Prettier** is configured with `prettier-plugin-tailwindcss` to auto-sort Tailwind classes
 - Run `pnpm format` before committing
 - ESLint rules from `@workspace/eslint-config` are enforced
 
 ### File Organization
+
 - Keep component files small and focused
 - Place utility functions in `lib/` directories
 - Custom hooks go in `hooks/` directories
 - Index files are not required but can be used for cleaner imports
 
 ### Environment & Secrets
+
 - Environment variables are loaded from `.env.local` in the web app
 - `CONVEX_SITE_URL` is required for building (set in turbo.json)
 - Never commit `.env.local`; use `.env.example` for documentation
 
 ### Dependency Management
+
 - Use `pnpm` for package management (configured in `package.json` with `"packageManager": "pnpm@9.0.6"`)
 - Node >=20 is required
 - Workspace packages are referenced with `"workspace:*"` syntax
 - Internal packages use `@workspace/` naming (e.g., `@workspace/ui`)
 
 ### Layout & Navigation
+
 - **Sidebar**: Use custom `AppSidebar` component at 100dvh height with fixed positioning
 - **Main content**: Must be scrollable with `overflow-y-auto` on the main container
 - **User profile dropdown**: Includes theme toggle (light/dark/system) and logout functionality
@@ -164,6 +182,7 @@ There are currently no test commands configured. Tests would be added at the wor
 ## Common Tasks
 
 ### Creating New Routes
+
 1. Create directory under `app/` following Next.js App Router conventions
 2. Add `page.tsx` for the route content
 3. Add `layout.tsx` if the route needs a specific layout (e.g., sidebar, header)
@@ -184,34 +203,40 @@ There are currently no test commands configured. Tests would be added at the wor
    ```
 
 ### Adding a New Component
+
 1. Create the component in `packages/ui/src/components/ComponentName.tsx`
 2. Export it from `packages/ui/package.json` exports if it's meant for reuse
 3. Import and use in `apps/web/components/` or other packages
 
 ### Modifying the Database Schema
+
 1. Edit `apps/web/convex/schema.ts`
 2. Add table definitions or modify existing ones
 3. The types are automatically generated to `convex/_generated/`
 4. Queries/mutations using the schema will auto-complete
 
 ### Adding Environment Variables
+
 1. Add to `apps/web/.env.local` (never commit)
 2. Document in `.env.example` or `.env.local.example`
 3. If needed at build time, add to `turbo.json` env array
 
 ### Running Convex Locally
+
 - Run `pnpm cdev` in `apps/web/` to start the local Convex development server
 - This enables hot-reloading for backend functions
 
 ### Authentication with Convex Auth
+
 - Use `useAuthActions()` hook from `@convex-dev/auth/react` to access auth methods
 - `signOut()` for logout functionality
 - User session is managed automatically by Convex Auth
 - Wrap app with `ConvexAuthNextjsServerProvider` (already in root layout)
 
 ### Using shadcn/ui Components
+
 - Use shadcn MCP tools for discovering and viewing components
-- Components are installed in `packages/ui/src/components/` 
+- Components are installed in `packages/ui/src/components/`
 - Common components: Button, Input, Dropdown Menu, Dialog, etc.
 - Always check existing components before creating new ones
 - For custom variations, extend existing shadcn components rather than creating from scratch
@@ -219,6 +244,7 @@ There are currently no test commands configured. Tests would be added at the wor
 ## MCP Servers
 
 ### Playwright (Web Testing)
+
 For testing the web application with Playwright:
 
 ```bash

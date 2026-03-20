@@ -2,11 +2,10 @@
 
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { Search, Users } from "lucide-react"
+import { FolderOpen, Plus, Search, Users } from "lucide-react"
 import { motion } from "motion/react"
 import { ProjectCard, Project } from "./project-card"
 import { AddProjectButton } from "./add-project-button"
-import { ProjectsEmptyState } from "./projects-empty-state"
 
 interface ProjectsListProps {
   projects: Project[]
@@ -153,6 +152,33 @@ export function ProjectsList({
         ))}
         <AddProjectButton onClick={onCreateProject} />
       </motion.div>
+    </div>
+  )
+}
+
+interface ProjectsEmptyStateProps {
+  onCreateProject?: () => void
+}
+
+export function ProjectsEmptyState({
+  onCreateProject,
+}: ProjectsEmptyStateProps) {
+  return (
+    <div className="flex min-h-100 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 px-6 py-12 text-center">
+      <div className="flex size-20 items-center justify-center rounded-full bg-muted">
+        <FolderOpen className="size-10 text-muted-foreground" />
+      </div>
+      <h3 className="mt-6 text-xl font-semibold text-foreground">
+        No projects yet
+      </h3>
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+        Get started by creating your first project. Organize your work, track
+        progress, and collaborate with your team.
+      </p>
+      <Button className="mt-6 gap-2" onClick={onCreateProject}>
+        <Plus className="size-4" />
+        Create Your First Project
+      </Button>
     </div>
   )
 }

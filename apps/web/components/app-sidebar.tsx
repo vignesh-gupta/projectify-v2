@@ -26,7 +26,7 @@ export function AppSidebar() {
       icon: FolderKanban,
     },
     {
-      href: "/dashboard/settings",
+      href: "/settings",
       label: "SETTINGS",
       icon: Settings,
     },
