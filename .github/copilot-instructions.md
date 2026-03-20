@@ -122,6 +122,9 @@ There are currently no test commands configured. Tests would be added at the wor
 - Create `loading.tsx` for loading states to show instant feedback while content loads
 - Create `error.tsx` for error boundaries to handle runtime errors gracefully
 - Use Server Components by default; mark with `"use client"` only when needed (hooks, events, browser APIs)
+- **Feature folder structure**: Follow industry best practices for reusable components. Break down UI into separate components (e.g., ProjectList and ProjectCard as distinct components, not combined)
+- **Component states**: Always implement loading, error, and empty states for all components that fetch or display data
+- **Animations**: Never add onload animations (fade in, etc.) on internal app pages. Only use animations on landing page or public pages. Always confirm before adding animations.
 
 ### Styling
 - **Tailwind CSS v4**: Use utility-first approach; avoid inline styles

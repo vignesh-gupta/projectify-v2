@@ -13,6 +13,38 @@ import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 
+function UserProfileDropdownSkeleton() {
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton size="lg" disabled>
+          <div className="size-8 animate-pulse rounded-full bg-muted" />
+          <div className="flex flex-col gap-1.5">
+            <div className="h-3 w-24 animate-pulse bg-muted" />
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  )
+}
+
+function UserProfileDropdownError() {
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton size="lg" disabled>
+          <div className="flex size-8 items-center justify-center bg-destructive/10">
+            <User className="size-4 text-destructive" />
+          </div>
+          <div className="flex flex-col gap-0.5 text-left leading-none">
+            <span className="text-xs text-destructive">Failed to load</span>
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  )
+}
+
 export function UserProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -20,6 +52,15 @@ export function UserProfileDropdown() {
   const { state } = useSidebar()
 
   const user = useQuery(api.functions.auth.currentUser)
+  const isLoading = user === undefined
+
+  if (isLoading) {
+    return <UserProfileDropdownSkeleton />
+  }
+
+  if (!user) {
+    return <UserProfileDropdownError />
+  }
 
   const handleSignOut = async () => {
     await signOut()
