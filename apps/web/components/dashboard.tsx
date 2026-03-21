@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useQuery } from "convex/react"
+import { useRouter } from "next/navigation"
 import { api } from "@/convex/_generated/api"
 import { DashboardHeader } from "./dashboard/dashboard-header"
 import { StatsGrid, type Stat } from "./dashboard/stats-grid"
@@ -66,6 +67,7 @@ function formatRelativeTime(timestamp: number): string {
 
 export default function DashboardPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const router = useRouter()
 
   const convexProjects = useQuery(api.projects.list)
   const isLoading = convexProjects === undefined
@@ -131,8 +133,7 @@ export default function DashboardPage() {
   }
 
   const handleProjectClick = (project: Project) => {
-    // TODO: Navigate to project detail page
-    console.log("Project clicked:", project.id)
+    router.push(`/project/${project.id}`)
   }
 
   return (
