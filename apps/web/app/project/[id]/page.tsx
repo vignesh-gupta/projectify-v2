@@ -23,11 +23,6 @@ export default function ProjectDashboardPage() {
   const { id } = useParams()
   const projectId = id as Id<"projects">
 
-  // const [project, analytics] = await Promise.all([
-  //   fetchQuery(api.projects.getProject, { projectId }),
-  //   fetchQuery(api.projects.getProjectAnalytics, { projectId }),
-  // ])
-
   const project = useQuery(api.projects.getProject, { projectId })
   const analytics = useQuery(api.projects.getProjectAnalytics, { projectId })
 
