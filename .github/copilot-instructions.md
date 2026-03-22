@@ -1,5 +1,17 @@
 # Copilot Instructions for Projectify
 
+## Workflow Hooks:
+
+- PRE-COMPLETION:
+  - Review the current `PLAN.md` to understand the outlined steps and ensure your changes align with the overall plan.
+  - Familiarize yourself with the recent edits in the file to maintain context and avoid reintroducing deleted code.
+  - Ensure that your changes adhere to the project's coding standards and conventions as outlined in this instruction file.
+  - Clarify any uncertainties about the requirements or implementation details before proceeding with the changes and avoid any speculative changes that are not explicitly mentioned in the plan or requirements.
+- POST COMPLETION:
+  - Check `PLAN.md` for the current plan and ensure your changes align with the outlined steps.
+  - Review the recent edits in the file to understand the context of the changes.
+  - Verify that the changes adhere to the project's coding standards and conventions as outlined in this instruction file
+
 ## Project Overview
 
 Projectify is a modern project management tool for small teams. It's a **monorepo** using Turborepo with:

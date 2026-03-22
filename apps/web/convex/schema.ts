@@ -52,6 +52,43 @@ const schema = defineSchema({
     .index("by_assignee", ["assigneeUserId"])
     .index("by_project_status", ["projectId", "status"]) // Efficient filtering
     .index("by_created_at", ["createdAt"]),
+
+  resources: defineTable({
+    projectId: v.id("projects"),
+    type: v.union(v.literal("file"), v.literal("link")),
+    name: v.string(),
+    folderId: v.optional(v.id("folders")), // Optional folder reference
+    // For files
+    storageId: v.optional(v.id("_storage")),
+    fileType: v.optional(v.string()), // MIME type
+    fileSize: v.optional(v.number()), // Size in bytes
+    // For links
+    url: v.optional(v.string()),
+    favicon: v.optional(v.string()), // URL to favicon
+    // Common fields
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_type", ["projectId", "type"])
+    .index("by_folder", ["folderId"])
+    .index("by_project_folder", ["projectId", "folderId"])
+    .index("by_created_at", ["createdAt"]),
+
+  folders: defineTable({
+    projectId: v.id("projects"),
+    name: v.string(),
+    parentId: v.optional(v.id("folders")), // For nested folders
+    type: v.union(v.literal("file"), v.literal("link")), // Which resource type
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("users"),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_type", ["projectId", "type"])
+    .index("by_parent", ["parentId"])
+    .index("by_project_parent", ["projectId", "parentId"]),
 })
 
-export default schema
+export default schema 
