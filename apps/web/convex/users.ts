@@ -1,6 +1,6 @@
+import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { auth } from "./auth"
 
 /**
  * Update current user's profile
@@ -12,7 +12,7 @@ export const updateProfile = mutation({
     image: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx)
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
       throw new Error("Unauthorized")
     }
@@ -39,7 +39,7 @@ export const leaveProject = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx)
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
       throw new Error("Unauthorized")
     }
@@ -85,7 +85,7 @@ export const leaveProject = mutation({
 export const leaveAllProjects = mutation({
   args: {},
   handler: async (ctx) => {
-    const userId = await auth.getUserId(ctx)
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
       throw new Error("Unauthorized")
     }
@@ -103,7 +103,9 @@ export const leaveAllProjects = mutation({
       if (membership.role === "owner") {
         const allProjectMemberships = await ctx.db
           .query("memberships")
-          .withIndex("by_project", (q) => q.eq("projectId", membership.projectId))
+          .withIndex("by_project", (q) =>
+            q.eq("projectId", membership.projectId)
+          )
           .collect()
 
         const otherOwners = allProjectMemberships.filter(
@@ -147,7 +149,7 @@ export const deleteAccount = mutation({
       throw new Error("Invalid confirmation. Type DELETE to confirm.")
     }
 
-    const userId = await auth.getUserId(ctx)
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
       throw new Error("Unauthorized")
     }
@@ -164,7 +166,9 @@ export const deleteAccount = mutation({
       if (membership.role === "owner") {
         const allProjectMemberships = await ctx.db
           .query("memberships")
-          .withIndex("by_project", (q) => q.eq("projectId", membership.projectId))
+          .withIndex("by_project", (q) =>
+            q.eq("projectId", membership.projectId)
+          )
           .collect()
 
         const otherOwners = allProjectMemberships.filter(
@@ -202,9 +206,7 @@ export const deleteAccount = mutation({
     }
 
     // Delete projects where user is sole owner
-    const ownedProjects = await ctx.db
-      .query("projects")
-      .collect()
+    const ownedProjects = await ctx.db.query("projects").collect()
 
     for (const project of ownedProjects) {
       const projectMemberships = await ctx.db
@@ -231,7 +233,7 @@ export const deleteAccount = mutation({
 export const getUserProjects = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await auth.getUserId(ctx)
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
       return []
     }
@@ -249,7 +251,9 @@ export const getUserProjects = query({
         // Count members
         const memberCount = await ctx.db
           .query("memberships")
-          .withIndex("by_project", (q) => q.eq("projectId", membership.projectId))
+          .withIndex("by_project", (q) =>
+            q.eq("projectId", membership.projectId)
+          )
           .collect()
 
         return {

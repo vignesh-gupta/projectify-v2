@@ -1,6 +1,6 @@
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { auth } from "./auth";
+import { getAuthUserId } from "@convex-dev/auth/server"
+import { v } from "convex/values"
+import { mutation, query } from "./_generated/server"
 
 /**
  * Create a new task
@@ -20,9 +20,9 @@ export const create = mutation({
     assigneeUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
     // Verify user is a member of the project
@@ -31,13 +31,13 @@ export const create = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
-    const now = Date.now();
+    const now = Date.now()
 
     const taskId = await ctx.db.insert("tasks", {
       projectId: args.projectId,
@@ -50,11 +50,11 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
       createdBy: userId,
-    });
+    })
 
-    return taskId;
+    return taskId
   },
-});
+})
 
 /**
  * Get all tasks for a project
@@ -67,9 +67,9 @@ export const listByProject = query({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
     // Verify user is a member of the project
@@ -78,29 +78,29 @@ export const listByProject = query({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
     // Get tasks with optional status filter
     if (args.status) {
-      const status = args.status; // TypeScript type narrowing
+      const status = args.status // TypeScript type narrowing
       return await ctx.db
         .query("tasks")
         .withIndex("by_project_status", (q) =>
           q.eq("projectId", args.projectId).eq("status", status)
         )
-        .collect();
+        .collect()
     }
 
     return await ctx.db
       .query("tasks")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
+      .collect()
   },
-});
+})
 
 /**
  * Update a task
@@ -120,14 +120,14 @@ export const update = mutation({
     assigneeUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
-    const task = await ctx.db.get(args.taskId);
+    const task = await ctx.db.get(args.taskId)
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error("Task not found")
     }
 
     // Verify user is a member of the project
@@ -136,21 +136,21 @@ export const update = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", task.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
-    const { taskId, ...updates } = args;
+    const { taskId, ...updates } = args
     await ctx.db.patch(taskId, {
       ...updates,
       updatedAt: Date.now(),
-    });
+    })
 
-    return taskId;
+    return taskId
   },
-});
+})
 
 /**
  * Delete a task
@@ -160,14 +160,14 @@ export const remove = mutation({
     taskId: v.id("tasks"),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
-    const task = await ctx.db.get(args.taskId);
+    const task = await ctx.db.get(args.taskId)
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error("Task not found")
     }
 
     // Verify user has permission (admin/owner or task creator)
@@ -176,16 +176,16 @@ export const remove = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", task.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
     if (membership.role === "member" && task.createdBy !== userId) {
-      throw new Error("Insufficient permissions");
+      throw new Error("Insufficient permissions")
     }
 
-    await ctx.db.delete(args.taskId);
+    await ctx.db.delete(args.taskId)
   },
-});
+})

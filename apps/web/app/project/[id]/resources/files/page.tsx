@@ -1,7 +1,8 @@
 "use client"
 
 import { useParams, useSearchParams } from "next/navigation"
-import { FileList } from "../components/file-list"
+import { useRef } from "react"
+import { FileList, FileListHandle } from "../components/file-list"
 import { DropZoneWrapper } from "../components/drop-zone-wrapper"
 import { FolderNav } from "../components/folder-nav"
 import { Id } from "@/convex/_generated/dataModel"
@@ -11,14 +12,17 @@ export default function FilesPage() {
   const searchParams = useSearchParams()
   const projectId = params.id as Id<"projects">
   const folderId = searchParams.get("folder") as Id<"folders"> | null
+  const fileListRef = useRef<FileListHandle>(null)
+
+  const handleFileDrop = (files: File[]) => {
+    fileListRef.current?.uploadFiles(files)
+  }
 
   return (
     <DropZoneWrapper
       projectId={projectId}
       folderId={folderId || undefined}
-      onFileDrop={() => {
-        // Files will be handled by FileList component
-      }}
+      onFileDrop={handleFileDrop}
     >
       <div className="h-full overflow-y-auto p-6">
         <div className="mx-auto max-w-5xl space-y-6">
@@ -39,6 +43,7 @@ export default function FilesPage() {
 
           {/* File List */}
           <FileList
+            ref={fileListRef}
             projectId={projectId}
             folderId={folderId || undefined}
           />

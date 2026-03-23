@@ -5,21 +5,23 @@ import { Button } from "@workspace/ui/components/button"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { useRef } from "react"
 import { DropZoneWrapper } from "./components/drop-zone-wrapper"
-import { FileList } from "./components/file-list"
+import { FileList, FileListHandle } from "./components/file-list"
 import { LinkList } from "./components/link-list"
 
-
-// TODO: Create a client component
 export default function ResourcesPage() {
   const { id: projectId } = useParams<{ id: Id<"projects"> }>()
+  const fileListRef = useRef<FileListHandle>(null)
+
+  const handleFileDrop = (files: File[]) => {
+    fileListRef.current?.uploadFiles(files)
+  }
 
   return (
     <DropZoneWrapper
       projectId={projectId}
-      onFileDrop={() => {
-        // Files will be handled by FileList component
-      }}
+      onFileDrop={handleFileDrop}
     >
       <div className="h-full overflow-y-auto p-6">
         <div className="mx-auto max-w-7xl space-y-8">
@@ -47,7 +49,7 @@ export default function ResourcesPage() {
                   </Link>
                 </Button>
               </div>
-              <FileList projectId={projectId} limit={7} />
+              <FileList ref={fileListRef} projectId={projectId} limit={5} hideFolders={true} showPath={true} />
             </div>
 
             {/* Links Section */}
@@ -64,7 +66,7 @@ export default function ResourcesPage() {
                   </Link>
                 </Button>
               </div>
-              <LinkList projectId={projectId} limit={7} />
+              <LinkList projectId={projectId} limit={5} hideFolders={true} />
             </div>
           </div>
         </div>

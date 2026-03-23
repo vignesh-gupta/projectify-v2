@@ -1,6 +1,6 @@
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { auth } from "./auth";
+import { getAuthUserId } from "@convex-dev/auth/server"
+import { v } from "convex/values"
+import { mutation, query } from "./_generated/server"
 
 /**
  * Add a member to a project
@@ -12,9 +12,9 @@ export const add = mutation({
     role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
   },
   handler: async (ctx, args) => {
-    const currentUserId = await auth.getUserId(ctx);
+    const currentUserId = await getAuthUserId(ctx)
     if (!currentUserId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
     // Check if current user has admin or owner role
@@ -23,10 +23,10 @@ export const add = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", currentUserId)
       )
-      .first();
+      .first()
 
     if (!currentMembership || currentMembership.role === "member") {
-      throw new Error("Insufficient permissions");
+      throw new Error("Insufficient permissions")
     }
 
     // Check if user is already a member
@@ -35,10 +35,10 @@ export const add = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", args.userId)
       )
-      .first();
+      .first()
 
     if (existingMembership) {
-      throw new Error("User is already a member");
+      throw new Error("User is already a member")
     }
 
     return await ctx.db.insert("memberships", {
@@ -46,9 +46,9 @@ export const add = mutation({
       userId: args.userId,
       role: args.role,
       joinedAt: Date.now(),
-    });
+    })
   },
-});
+})
 
 /**
  * Update a member's role
@@ -59,14 +59,14 @@ export const updateRole = mutation({
     role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
-    const membership = await ctx.db.get(args.membershipId);
+    const membership = await ctx.db.get(args.membershipId)
     if (!membership) {
-      throw new Error("Membership not found");
+      throw new Error("Membership not found")
     }
 
     // Check if current user has owner role
@@ -75,19 +75,19 @@ export const updateRole = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", membership.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!currentMembership || currentMembership.role !== "owner") {
-      throw new Error("Only owners can change roles");
+      throw new Error("Only owners can change roles")
     }
 
     await ctx.db.patch(args.membershipId, {
       role: args.role,
-    });
+    })
 
-    return args.membershipId;
+    return args.membershipId
   },
-});
+})
 
 /**
  * Remove a member from a project
@@ -97,14 +97,14 @@ export const remove = mutation({
     membershipId: v.id("memberships"),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
-    const membership = await ctx.db.get(args.membershipId);
+    const membership = await ctx.db.get(args.membershipId)
     if (!membership) {
-      throw new Error("Membership not found");
+      throw new Error("Membership not found")
     }
 
     // Check if current user has admin or owner role, or is removing themselves
@@ -113,20 +113,20 @@ export const remove = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", membership.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
-    const isSelf = membership.userId === userId;
+    const isSelf = membership.userId === userId
     const hasPermission =
       currentMembership &&
-      (currentMembership.role === "owner" || currentMembership.role === "admin");
+      (currentMembership.role === "owner" || currentMembership.role === "admin")
 
     if (!isSelf && !hasPermission) {
-      throw new Error("Insufficient permissions");
+      throw new Error("Insufficient permissions")
     }
 
-    await ctx.db.delete(args.membershipId);
+    await ctx.db.delete(args.membershipId)
   },
-});
+})
 
 /**
  * Get all members of a project
@@ -136,9 +136,9 @@ export const listByProject = query({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
     // Verify user is a member of the project
@@ -147,15 +147,15 @@ export const listByProject = query({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
     return await ctx.db
       .query("memberships")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
+      .collect()
   },
-});
+})

@@ -1,6 +1,6 @@
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { auth } from "./auth";
+import { getAuthUserId } from "@convex-dev/auth/server"
+import { v } from "convex/values"
+import { mutation, query } from "./_generated/server"
 
 /**
  * Generate upload URL for file upload
@@ -8,14 +8,14 @@ import { auth } from "./auth";
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
-    return await ctx.storage.generateUploadUrl();
+    return await ctx.storage.generateUploadUrl()
   },
-});
+})
 
 /**
  * Create a file resource after upload
@@ -30,9 +30,9 @@ export const createFile = mutation({
     folderId: v.optional(v.id("folders")),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
     // Verify user is a member of the project
@@ -41,13 +41,13 @@ export const createFile = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
-    const now = Date.now();
+    const now = Date.now()
 
     const resourceId = await ctx.db.insert("resources", {
       projectId: args.projectId,
@@ -60,11 +60,11 @@ export const createFile = mutation({
       createdAt: now,
       updatedAt: now,
       createdBy: userId,
-    });
+    })
 
-    return resourceId;
+    return resourceId
   },
-});
+})
 
 /**
  * Create a link resource
@@ -78,9 +78,9 @@ export const createLink = mutation({
     folderId: v.optional(v.id("folders")),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
     // Verify user is a member of the project
@@ -89,13 +89,13 @@ export const createLink = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
-    const now = Date.now();
+    const now = Date.now()
 
     const resourceId = await ctx.db.insert("resources", {
       projectId: args.projectId,
@@ -107,11 +107,11 @@ export const createLink = mutation({
       createdAt: now,
       updatedAt: now,
       createdBy: userId,
-    });
+    })
 
-    return resourceId;
+    return resourceId
   },
-});
+})
 
 /**
  * Get all resources for a project
@@ -124,9 +124,9 @@ export const listByProject = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
     // Verify user is a member of the project
@@ -135,25 +135,27 @@ export const listByProject = query({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
     // Build query based on arguments
-    let resources;
+    let resources
 
     if (args.folderId !== undefined) {
       // Query by folder (including null for root)
       resources = await ctx.db
         .query("resources")
         .withIndex("by_project_folder", (q) =>
-          q.eq("projectId", args.projectId).eq("folderId", args.folderId === null ? undefined : args.folderId)
+          q
+            .eq("projectId", args.projectId)
+            .eq("folderId", args.folderId === null ? undefined : args.folderId)
         )
         .filter((q) => (args.type ? q.eq(q.field("type"), args.type) : true))
         .order("desc")
-        .take(args.limit || 1000);
+        .take(args.limit || 1000)
     } else if (args.type) {
       resources = await ctx.db
         .query("resources")
@@ -161,18 +163,18 @@ export const listByProject = query({
           q.eq("projectId", args.projectId).eq("type", args.type!)
         )
         .order("desc")
-        .take(args.limit || 1000);
+        .take(args.limit || 1000)
     } else {
       resources = await ctx.db
         .query("resources")
         .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
         .order("desc")
-        .take(args.limit || 1000);
+        .take(args.limit || 1000)
     }
 
-    return resources;
+    return resources
   },
-});
+})
 
 /**
  * Update a resource (rename)
@@ -185,14 +187,14 @@ export const update = mutation({
     favicon: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
-    const resource = await ctx.db.get(args.resourceId);
+    const resource = await ctx.db.get(args.resourceId)
     if (!resource) {
-      throw new Error("Resource not found");
+      throw new Error("Resource not found")
     }
 
     // Verify user is a member of the project
@@ -201,21 +203,21 @@ export const update = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", resource.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
-    const { resourceId, ...updates } = args;
+    const { resourceId, ...updates } = args
     await ctx.db.patch(resourceId, {
       ...updates,
       updatedAt: Date.now(),
-    });
+    })
 
-    return resourceId;
+    return resourceId
   },
-});
+})
 
 /**
  * Delete a resource
@@ -225,14 +227,14 @@ export const remove = mutation({
     resourceId: v.id("resources"),
   },
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
+    const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized")
     }
 
-    const resource = await ctx.db.get(args.resourceId);
+    const resource = await ctx.db.get(args.resourceId)
     if (!resource) {
-      throw new Error("Resource not found");
+      throw new Error("Resource not found")
     }
 
     // Verify user has permission
@@ -241,25 +243,71 @@ export const remove = mutation({
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", resource.projectId).eq("userId", userId)
       )
-      .first();
+      .first()
 
     if (!membership) {
-      throw new Error("Not a member of this project");
+      throw new Error("Not a member of this project")
     }
 
     // Only allow admin/owner or creator to delete
     if (membership.role === "member" && resource.createdBy !== userId) {
-      throw new Error("Insufficient permissions");
+      throw new Error("Insufficient permissions")
     }
 
     // Delete the file from storage if it's a file resource
     if (resource.type === "file" && resource.storageId) {
-      await ctx.storage.delete(resource.storageId);
+      await ctx.storage.delete(resource.storageId)
     }
 
-    await ctx.db.delete(args.resourceId);
+    await ctx.db.delete(args.resourceId)
   },
-});
+})
+
+/**
+ * Delete multiple resources at once
+ */
+export const deleteResources = mutation({
+  args: {
+    resourceIds: v.array(v.id("resources")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    for (const resourceId of args.resourceIds) {
+      const resource = await ctx.db.get(resourceId)
+      if (!resource) {
+        continue // Skip if resource not found
+      }
+
+      // Verify user has permission
+      const membership = await ctx.db
+        .query("memberships")
+        .withIndex("by_project_user", (q) =>
+          q.eq("projectId", resource.projectId).eq("userId", userId)
+        )
+        .first()
+
+      if (!membership) {
+        throw new Error("Not a member of this project")
+      }
+
+      // Only allow admin/owner or creator to delete
+      if (membership.role === "member" && resource.createdBy !== userId) {
+        throw new Error("Insufficient permissions")
+      }
+
+      // Delete the file from storage if it's a file resource
+      if (resource.type === "file" && resource.storageId) {
+        await ctx.storage.delete(resource.storageId)
+      }
+
+      await ctx.db.delete(resourceId)
+    }
+  },
+})
 
 /**
  * Get download URL for a file
@@ -269,6 +317,45 @@ export const getFileUrl = query({
     storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    return await ctx.storage.getUrl(args.storageId);
+    return await ctx.storage.getUrl(args.storageId)
   },
-});
+})
+
+/**
+ * Move a resource to a different folder
+ */
+export const moveResource = mutation({
+  args: {
+    resourceId: v.id("resources"),
+    folderId: v.optional(v.id("folders")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    const resource = await ctx.db.get(args.resourceId)
+    if (!resource) {
+      throw new Error("Resource not found")
+    }
+
+    // Check if user is a member of the project
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", resource.projectId).eq("userId", userId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("Not authorized to modify this resource")
+    }
+
+    // Update the resource's folderId
+    await ctx.db.patch(args.resourceId, {
+      folderId: args.folderId,
+      updatedAt: Date.now(),
+    })
+  },
+})

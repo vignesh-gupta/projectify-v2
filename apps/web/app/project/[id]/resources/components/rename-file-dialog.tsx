@@ -25,7 +25,11 @@ interface RenameFileDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function RenameFileDialog({ resource, open, onOpenChange }: RenameFileDialogProps) {
+export function RenameFileDialog({
+  resource,
+  open,
+  onOpenChange,
+}: RenameFileDialogProps) {
   const [name, setName] = useState(resource.name)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -59,11 +63,13 @@ export function RenameFileDialog({ resource, open, onOpenChange }: RenameFileDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="sm:max-w-105">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Rename File</DialogTitle>
-            <DialogDescription>Enter a new name for this file.</DialogDescription>
+            <DialogDescription>
+              Enter a new name for this file.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="mt-6 space-y-4">

@@ -36,7 +36,11 @@ export function DropZoneWrapper({ children, onFileDrop }: DropZoneWrapperProps) 
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-    setIsDragging(true)
+    // Only show overlay for external file drags, not internal element drags
+    const hasFiles = e.dataTransfer.types.includes("Files")
+    if (hasFiles) {
+      setIsDragging(true)
+    }
   }
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -48,7 +52,11 @@ export function DropZoneWrapper({ children, onFileDrop }: DropZoneWrapperProps) 
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault()
-    setIsDragging(true)
+    // Only show overlay for external file drags, not internal element drags
+    const hasFiles = e.dataTransfer.types.includes("Files")
+    if (hasFiles) {
+      setIsDragging(true)
+    }
   }
 
   return (
