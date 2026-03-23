@@ -265,9 +265,14 @@ export const deleteFolderRecursive = mutation({
  */
 export const getFolderPath = query({
   args: {
-    folderId: v.id("folders"),
+    folderId: v.optional(v.id("folders")),
+    skipFiles: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    if (args.skipFiles) {
+      return null
+    }
+
     const path: Array<{ _id: Id<"folders">; name: string }> = []
     let currentId: Id<"folders"> | undefined = args.folderId
 

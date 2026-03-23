@@ -37,6 +37,151 @@ import { UploadProgressPanel, type UploadItem } from "./upload-progress-panel"
 
 type Resource = Doc<"resources">
 
+// Helper functions
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const getFileIcon = (fileType: string) => {
+  if (fileType.startsWith("image/")) return "🖼️"
+  if (fileType.startsWith("video/")) return "🎥"
+  if (fileType.startsWith("audio/")) return "🎵"
+  if (fileType.includes("pdf")) return "📄"
+  if (fileType.includes("document") || fileType.includes("word")) return "📝"
+  if (fileType.includes("spreadsheet") || fileType.includes("excel"))
+    return "📊"
+  if (fileType.includes("presentation") || fileType.includes("powerpoint"))
+    return "📽️"
+  if (fileType.includes("zip") || fileType.includes("rar")) return "🗜️"
+  return "📎"
+}
+
+// Helper function to format folder path with ellipsis
+const formatFolderPath = (
+  path: Array<{ _id: Id<"folders">; name: string }>
+): string => {
+  if (path.length === 0) return ""
+  if (path.length <= 4) {
+    return path.map((f) => f.name).join(" > ")
+  }
+  // If more than 4, show first and last with ellipsis
+  const first = path[0]
+  const last = path[path.length - 1]
+  if (!first || !last) return ""
+  return `${first.name} > ... > ${last.name}`
+}
+
+// Component to display file card with optional folder path
+interface FileCardProps {
+  file: Resource
+  index: number
+  showPath: boolean
+  selectedIds: Set<string>
+  onDragStart: (fileId: string, e: React.DragEvent) => void
+  onClick: (fileId: string, index: number, e: React.MouseEvent) => void
+  onViewInPath: (folderId: Id<"folders"> | undefined) => void
+  onDownload: (storageId: Id<"_storage">) => void
+  onRename: (file: Resource) => void
+  onDelete: (file: Resource) => void
+}
+
+function FileCardWithPath({
+  file,
+  index,
+  showPath,
+  selectedIds,
+  onDragStart,
+  onClick,
+  onViewInPath,
+  onDownload,
+  onRename,
+  onDelete,
+}: FileCardProps) {
+  // Fetch folder path only if showPath is true and file has a folderId
+  const folderPath = useQuery(api.folders.getFolderPath, {
+    folderId: file.folderId,
+    skipFiles: !showPath,
+  })
+
+  const pathText = showPath && folderPath ? formatFolderPath(folderPath) : ""
+
+  return (
+    <Card
+      key={file._id}
+      className={cn(
+        "cursor-move transition-shadow hover:shadow-md",
+        selectedIds.has(file._id) && "ring-2 ring-primary",
+        {
+          "py-2": showPath,
+        }
+      )}
+      draggable
+      onDragStart={(e) => onDragStart(file._id, e)}
+      onClick={(e) => onClick(file._id, index, e)}
+    >
+      <CardContent className="flex items-center justify-between p-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
+            {getFileIcon(file.fileType || "")}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="truncate font-medium">{file.name}</h4>
+            <p className="text-xs text-muted-foreground">
+              {formatFileSize(file.fileSize || 0)} •{" "}
+              {new Date(file.createdAt).toLocaleDateString()}
+            </p>
+            {showPath && pathText && (
+              <p className="truncate text-xs text-muted-foreground/70">
+                📁 {pathText}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {showPath && (
+              <>
+                <DropdownMenuItem onClick={() => onViewInPath(file.folderId)}>
+                  <Folder className="mr-2 h-4 w-4" />
+                  View in Path
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem
+              onClick={() => file.storageId && onDownload(file.storageId)}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onRename(file)}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(file)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </CardContent>
+    </Card>
+  )
+}
+
 interface FileListProps {
   projectId: Id<"projects">
   folderId?: Id<"folders">
@@ -74,7 +219,7 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
     const files = useQuery(api.resources.listByProject, {
       projectId,
       type: "file",
-      folderId: folderId || null,
+      folderId,
       limit,
     })
 
@@ -440,27 +585,6 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
       }
     }
 
-    const formatFileSize = (bytes: number) => {
-      if (bytes < 1024) return `${bytes} B`
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    }
-
-    const getFileIcon = (fileType: string) => {
-      if (fileType.startsWith("image/")) return "🖼️"
-      if (fileType.startsWith("video/")) return "🎥"
-      if (fileType.startsWith("audio/")) return "🎵"
-      if (fileType.includes("pdf")) return "📄"
-      if (fileType.includes("document") || fileType.includes("word"))
-        return "📝"
-      if (fileType.includes("spreadsheet") || fileType.includes("excel"))
-        return "📊"
-      if (fileType.includes("presentation") || fileType.includes("powerpoint"))
-        return "📽️"
-      if (fileType.includes("zip") || fileType.includes("rar")) return "🗜️"
-      return "📎"
-    }
-
     // Handle file download by fetching URL when needed
     useEffect(() => {
       if (fileUrl && downloadingFile) {
@@ -619,81 +743,19 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
             </Card>
           ) : (
             files?.map((file, index) => (
-              <Card
+              <FileCardWithPath
                 key={file._id}
-                className={cn(
-                  "cursor-move transition-shadow hover:shadow-md",
-                  selectedIds.has(file._id) && "ring-2 ring-primary"
-                )}
-                draggable
-                onDragStart={(e) => handleDragStart(file._id, e)}
-                onClick={(e) => handleFileClick(file._id, index, e)}
-              >
-                <CardContent className="flex items-center justify-between p-4">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
-                      {getFileIcon(file.fileType || "")}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="truncate font-medium">{file.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(file.fileSize || 0)} •{" "}
-                        {new Date(file.createdAt).toLocaleDateString()}
-                        {showPath && file.folderId && " • 📁"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      asChild
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 shrink-0 p-0"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {showPath && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => handleViewInPath(file.folderId)}
-                          >
-                            <Folder className="mr-2 h-4 w-4" />
-                            View in Path
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-                      <DropdownMenuItem
-                        onClick={() =>
-                          file.storageId && handleDownload(file.storageId)
-                        }
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        Download
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setRenameFile(file)}>
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteFile(file)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardContent>
-              </Card>
+                file={file}
+                index={index}
+                showPath={showPath}
+                selectedIds={selectedIds}
+                onDragStart={handleDragStart}
+                onClick={handleFileClick}
+                onViewInPath={handleViewInPath}
+                onDownload={handleDownload}
+                onRename={setRenameFile}
+                onDelete={setDeleteFile}
+              />
             ))
           )}
         </div>

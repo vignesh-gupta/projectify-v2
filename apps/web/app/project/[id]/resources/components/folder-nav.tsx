@@ -2,11 +2,20 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { useRouter, usePathname } from "next/navigation"
-import { ChevronRight, FolderPlus, Home } from "lucide-react"
+import { FolderPlus, Home } from "lucide-react"
 import { useState } from "react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
+import {
+  Breadcrumb,
+  BreadcrumbEllipsis,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@workspace/ui/components/breadcrumb"
 import {
   Dialog,
   DialogContent,
@@ -16,10 +25,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { toast } from "sonner"
-import { cn } from "@workspace/ui/lib/utils"
 
 interface FolderNavProps {
   projectId: Id<"projects">
@@ -43,7 +57,7 @@ export function FolderNav({ projectId, folderId, type }: FolderNavProps) {
 
   const navigateToFolder = (targetFolderId?: Id<"folders">) => {
     if (targetFolderId) {
-      router.push(`${pathname}?folder=${targetFolderId}`)
+      router.push(`${pathname}?folderId=${targetFolderId}`)
     } else {
       router.push(pathname)
     }
@@ -78,50 +92,128 @@ export function FolderNav({ projectId, folderId, type }: FolderNavProps) {
     }
   }
 
+  // Render breadcrumb with ellipsis for deeply nested paths
+  const renderBreadcrumbs = () => {
+    if (!folderPath || folderPath.length === 0) {
+      return (
+        <BreadcrumbPage className="font-medium">
+          <Home className="mr-1.5 inline h-4 w-4" />
+          All {type === "file" ? "Files" : "Links"}
+        </BreadcrumbPage>
+      )
+    }
+
+    const items: React.ReactNode[] = []
+
+    // Home link
+    items.push(
+      <BreadcrumbItem key="home">
+        <BreadcrumbLink
+          onClick={() => navigateToFolder()}
+          className="cursor-pointer"
+        >
+          <Home className="h-4 w-4" />
+        </BreadcrumbLink>
+      </BreadcrumbItem>
+    )
+
+    // If path is <= 4 items, show all
+    if (folderPath.length <= 4) {
+      folderPath.forEach((folder: { _id: Id<"folders">; name: string }, index: number) => {
+        const isLast = index === folderPath.length - 1
+
+        items.push(<BreadcrumbSeparator key={`sep-${folder._id}`} />)
+
+        items.push(
+          <BreadcrumbItem key={folder._id}>
+            {isLast ? (
+              <BreadcrumbPage className="font-medium">
+                {folder.name}
+              </BreadcrumbPage>
+            ) : (
+              <BreadcrumbLink
+                onClick={() => navigateToFolder(folder._id)}
+                className="cursor-pointer"
+              >
+                {folder.name}
+              </BreadcrumbLink>
+            )}
+          </BreadcrumbItem>
+        )
+      })
+    } else {
+      // Show first, ellipsis with dropdown, and last
+      const first = folderPath[0]
+      const middle = folderPath.slice(1, -1)
+      const last = folderPath[folderPath.length - 1]
+
+      if (!first || !last) {
+        return items
+      }
+
+      // First folder
+      items.push(<BreadcrumbSeparator key="sep-first" />)
+      items.push(
+        <BreadcrumbItem key={first._id}>
+          <BreadcrumbLink
+            onClick={() => navigateToFolder(first._id)}
+            className="cursor-pointer"
+          >
+            {first.name}
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+      )
+
+      // Ellipsis with dropdown for middle folders
+      items.push(<BreadcrumbSeparator key="sep-ellipsis" />)
+      items.push(
+        <BreadcrumbItem key="ellipsis">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-1">
+              <BreadcrumbEllipsis className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {middle.map((folder: { _id: Id<"folders">; name: string }) => (
+                <DropdownMenuItem
+                  key={folder._id}
+                  onClick={() => navigateToFolder(folder._id)}
+                >
+                  {folder.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </BreadcrumbItem>
+      )
+
+      // Last folder
+      items.push(<BreadcrumbSeparator key="sep-last" />)
+      items.push(
+        <BreadcrumbItem key={last._id}>
+          <BreadcrumbPage className="font-medium">{last.name}</BreadcrumbPage>
+        </BreadcrumbItem>
+      )
+    }
+
+    return items
+  }
+
   return (
     <div className="flex items-center justify-between rounded-lg border bg-card p-4">
       {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 overflow-x-auto">
-        <button
-          onClick={() => navigateToFolder()}
-          className={cn(
-            "flex items-center gap-1.5 rounded-md px-2 py-1 text-sm transition-colors hover:bg-muted",
-            !folderId && "bg-muted font-medium"
-          )}
-        >
-          <Home className="h-4 w-4" />
-          <span>All {type === "file" ? "Files" : "Links"}</span>
-        </button>
-
-        {folderPath && folderPath.length > 0 && (
-          <>
-            {folderPath.map((folder: { _id: Id<"folders">; name: string }, index: number) => (
-              <div key={folder._id} className="flex items-center gap-2">
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                <button
-                  onClick={() => navigateToFolder(folder._id)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2 py-1 text-sm transition-colors hover:bg-muted",
-                    index === folderPath.length - 1 && "bg-muted font-medium"
-                  )}
-                >
-                  <span>{folder.name}</span>
-                </button>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
+      <Breadcrumb>
+        <BreadcrumbList>{renderBreadcrumbs()}</BreadcrumbList>
+      </Breadcrumb>
 
       {/* Create Folder Button */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="shrink-0">
             <FolderPlus className="mr-2 h-4 w-4" />
             New Folder
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-106.25">
           <form onSubmit={handleCreateFolder}>
             <DialogHeader>
               <DialogTitle>Create New Folder</DialogTitle>

@@ -1,17 +1,5 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
-import { useState, useEffect, useCallback } from "react"
-import { useRouter, usePathname } from "next/navigation"
-import Image from "next/image"
-import {
-  ExternalLink,
-  Globe,
-  MoreHorizontal,
-  Trash2,
-  Edit2,
-  Folder,
-} from "lucide-react"
 import { api } from "@/convex/_generated/api"
 import { Doc, Id } from "@/convex/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
@@ -25,12 +13,169 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { cn } from "@workspace/ui/lib/utils"
-import { CreateLinkDialog } from "./create-link-dialog"
-import { EditLinkDialog } from "./edit-link-dialog"
-import { DeleteResourceDialog } from "./delete-resource-dialog"
+import { useMutation, useQuery } from "convex/react"
+import {
+  Edit2,
+  ExternalLink,
+  Folder,
+  Globe,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react"
+import Image from "next/image"
+import { usePathname, useRouter } from "next/navigation"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
+import { CreateLinkDialog } from "./create-link-dialog"
+import { DeleteResourceDialog } from "./delete-resource-dialog"
+import { EditLinkDialog } from "./edit-link-dialog"
 
 type Resource = Doc<"resources">
+
+// Helper function to format folder path with ellipsis
+const formatFolderPath = (
+  path: Array<{ _id: Id<"folders">; name: string }>
+): string => {
+  if (path.length === 0) return ""
+  if (path.length <= 4) {
+    return path.map((f) => f.name).join(" > ")
+  }
+  // If more than 4, show first and last with ellipsis
+  const first = path[0]
+  const last = path[path.length - 1]
+  if (!first || !last) return ""
+  return `${first.name} > ... > ${last.name}`
+}
+
+// Component to display link card with optional folder path
+interface LinkCardProps {
+  link: Resource
+  index: number
+  showPath: boolean
+  selectedIds: Set<string>
+  onDragStart: (linkId: string, e: React.DragEvent) => void
+  onClick: (linkId: string, index: number, e: React.MouseEvent) => void
+  onViewInPath: (folderId: Id<"folders"> | undefined) => void
+  onOpenLink: (url: string) => void
+  onEdit: (link: Resource) => void
+  onDelete: (link: Resource) => void
+}
+
+function LinkCardWithPath({
+  link,
+  index,
+  showPath,
+  selectedIds,
+  onDragStart,
+  onClick,
+  onViewInPath,
+  onOpenLink,
+  onEdit,
+  onDelete,
+}: LinkCardProps) {
+  // Fetch folder path only if showPath is true and file has a folderId
+  const folderPath = useQuery(api.folders.getFolderPath, {
+    folderId: link.folderId,
+    skipFiles: !showPath,
+  })
+
+  const pathText = showPath && folderPath ? formatFolderPath(folderPath) : ""
+
+  return (
+    <Card
+      key={link._id}
+      className={cn(
+        "cursor-move transition-shadow hover:shadow-md",
+        selectedIds.has(link._id) && "ring-2 ring-primary"
+      )}
+      draggable
+      onDragStart={(e) => onDragStart(link._id, e)}
+      onClick={(e) => onClick(link._id, index, e)}
+    >
+      <CardContent className="flex items-center justify-between p-4">
+        <div
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpenLink(link.url || "")
+          }}
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            {link.favicon ? (
+              <Image
+                src={link.favicon}
+                alt={link.name}
+                width={24}
+                height={24}
+                className="h-6 w-6 rounded"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none"
+                  e.currentTarget.nextElementSibling?.classList.remove("hidden")
+                }}
+              />
+            ) : null}
+            <Globe
+              className={cn(
+                "h-5 w-5 text-muted-foreground",
+                link.favicon && "hidden"
+              )}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h4 className="truncate font-medium">{link.name}</h4>
+              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+            </div>
+            <p className="truncate text-xs text-muted-foreground">
+              {link.url || ""}
+            </p>
+            {showPath && pathText && (
+              <p className="truncate text-xs text-muted-foreground/70">
+                📁 {pathText}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {showPath && (
+              <>
+                <DropdownMenuItem onClick={() => onViewInPath(link.folderId)}>
+                  <Folder className="mr-2 h-4 w-4" />
+                  View in Path
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onClick={() => onOpenLink(link.url || "")}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Link
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit(link)}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(link)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </CardContent>
+    </Card>
+  )
+}
 
 interface LinkListProps {
   projectId: Id<"projects">
@@ -45,6 +190,7 @@ export function LinkList({
   folderId,
   limit,
   hideFolders = false,
+  showPath = false,
 }: LinkListProps) {
   const [editLink, setEditLink] = useState<Resource | null>(null)
   const [deleteLink, setDeleteLink] = useState<Resource | null>(null)
@@ -62,7 +208,7 @@ export function LinkList({
   const links = useQuery(api.resources.listByProject, {
     projectId,
     type: "link",
-    folderId: folderId || null,
+    folderId,
     limit,
   })
 
@@ -194,6 +340,19 @@ export function LinkList({
     } catch (error) {
       console.error("Delete folder error:", error)
       toast.error("Failed to delete folder")
+    }
+  }
+
+  // Navigate to folder path
+  const handleViewInPath = (folderId: Id<"folders"> | undefined) => {
+    if (!folderId) {
+      // Navigate to root links page
+      router.push(`${pathname.split("/resources")[0]}/resources/links`)
+    } else {
+      // Navigate to specific folder
+      router.push(
+        `${pathname.split("/resources")[0]}/resources/links?folderId=${folderId}`
+      )
     }
   }
 
@@ -377,95 +536,19 @@ export function LinkList({
           </Card>
         ) : (
           links?.map((link, index) => (
-            <Card
+            <LinkCardWithPath
               key={link._id}
-              className={cn(
-                "cursor-move transition-shadow hover:shadow-md",
-                selectedIds.has(link._id) && "ring-2 ring-primary"
-              )}
-              draggable
-              onDragStart={(e) => handleDragStart(link._id, e)}
-              onClick={(e) => handleLinkClick(link._id, index, e)}
-            >
-              <CardContent className="flex items-center justify-between p-4">
-                <div
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleOpenLink(link.url || "")
-                  }}
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    {link.favicon ? (
-                      <Image
-                        src={link.favicon}
-                        alt={link.name}
-                        width={24}
-                        height={24}
-                        className="h-6 w-6 rounded"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none"
-                          e.currentTarget.nextElementSibling?.classList.remove(
-                            "hidden"
-                          )
-                        }}
-                      />
-                    ) : null}
-                    <Globe
-                      className={cn(
-                        "h-5 w-5 text-muted-foreground",
-                        link.favicon && "hidden"
-                      )}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="truncate font-medium">{link.name}</h4>
-                      <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {link.url || ""}
-                    </p>
-                  </div>
-                </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 shrink-0 p-0"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => handleOpenLink(link.url || "")}
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Open Link
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setEditLink(link)}>
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => setDeleteLink(link)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </CardContent>
-            </Card>
+              link={link}
+              index={index}
+              showPath={showPath}
+              selectedIds={selectedIds}
+              onDragStart={handleDragStart}
+              onClick={handleLinkClick}
+              onViewInPath={handleViewInPath}
+              onOpenLink={handleOpenLink}
+              onEdit={setEditLink}
+              onDelete={setDeleteLink}
+            />
           ))
         )}
       </div>

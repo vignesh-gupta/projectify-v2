@@ -45,7 +45,7 @@ export default function ResourcesPage() {
                 <Button variant="ghost" size="sm" asChild>
                   <Link href={`/project/${projectId}/resources/files`}>
                     View All
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 size-4" />
                   </Link>
                 </Button>
               </div>
@@ -62,11 +62,11 @@ export default function ResourcesPage() {
                 <Button variant="ghost" size="sm" asChild>
                   <Link href={`/project/${projectId}/resources/links`}>
                     View All
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 size-4" />
                   </Link>
                 </Button>
               </div>
-              <LinkList projectId={projectId} limit={5} hideFolders={true} />
+              <LinkList projectId={projectId} limit={5} hideFolders={true} showPath={true} />
             </div>
           </div>
         </div>

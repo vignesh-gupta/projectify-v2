@@ -83,13 +83,13 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-[540px]">
+      <SheetContent className="sm:min-w-2xl">
         <SheetHeader>
           <SheetTitle>Task Details</SheetTitle>
           <SheetDescription>View and edit task information</SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 mx-4 space-y-6">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             {isEditing ? (
