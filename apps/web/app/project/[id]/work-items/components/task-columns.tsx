@@ -30,8 +30,17 @@ const statusLabels = {
   done: "Done",
 }
 
-export function TaskActionsCell({ task, projectId }: { task: Task; projectId: Id<"projects"> }) {
-  const [showDetail, setShowDetail] = useState(false)
+export function TaskActionsCell({
+  task,
+  projectId,
+}: {
+  task: Task
+  projectId: Id<"projects">
+}) {
+  const [showDetail, setShowDetail] = useState({
+    open: false,
+    isEditable: false,
+  })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   return (
@@ -44,8 +53,26 @@ export function TaskActionsCell({ task, projectId }: { task: Task; projectId: Id
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setShowDetail(true)}>View details</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowDetail(true)}>Edit task</DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              setShowDetail({
+                open: true,
+                isEditable: false,
+              })
+            }
+          >
+            View details
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              setShowDetail({
+                open: true,
+                isEditable: true,
+              })
+            }
+          >
+            Edit task
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
@@ -59,8 +86,14 @@ export function TaskActionsCell({ task, projectId }: { task: Task; projectId: Id
       <TaskDetailSheet
         task={task}
         projectId={projectId}
-        open={showDetail}
-        onOpenChange={setShowDetail}
+        open={showDetail.open}
+        isEditable={showDetail.isEditable}
+        onOpenChange={(value) =>
+          setShowDetail({ isEditable: false, open: value })
+        }
+        onEditableChange={(isEditable) =>
+          setShowDetail((prev) => ({ ...prev, isEditable }))
+        }
       />
 
       <DeleteTaskDialog
@@ -73,7 +106,9 @@ export function TaskActionsCell({ task, projectId }: { task: Task; projectId: Id
   )
 }
 
-export const createTaskColumns = (projectId: Id<"projects">): ColumnDef<Task>[] => [
+export const createTaskColumns = (
+  projectId: Id<"projects">
+): ColumnDef<Task>[] => [
   {
     accessorKey: "title",
     header: ({ column }) => {
@@ -91,7 +126,12 @@ export const createTaskColumns = (projectId: Id<"projects">): ColumnDef<Task>[] 
       const task = row.original
       return (
         <div className="flex items-center gap-2">
-          <div className={cn("h-2 w-2 rounded-full flex-shrink-0", priorityColors[task.priority])} />
+          <div
+            className={cn(
+              "size-2 shrink-0 rounded-full",
+              priorityColors[task.priority]
+            )}
+          />
           <span className="font-medium">{task.title}</span>
         </div>
       )
@@ -148,8 +188,9 @@ export const createTaskColumns = (projectId: Id<"projects">): ColumnDef<Task>[] 
     },
     cell: ({ row }) => {
       const dueDate = row.getValue("dueDate") as number | undefined
-      if (!dueDate) return <span className="text-muted-foreground">No due date</span>
-      
+      if (!dueDate)
+        return <span className="text-muted-foreground">No due date</span>
+
       const date = new Date(dueDate)
       return (
         <div className="flex items-center gap-2">

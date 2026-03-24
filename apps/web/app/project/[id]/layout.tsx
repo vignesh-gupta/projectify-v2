@@ -1,10 +1,11 @@
 import { ProjectSidebar } from "@/components/project-sidebar"
+import { Id } from "@/convex/_generated/dataModel"
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { ReactNode } from "react"
 
 interface ProjectLayoutProps {
   children: ReactNode
-  params: Promise<{ id: string }>
+  params: Promise<{ id: Id<"projects"> }>
 }
 
 export default async function ProjectLayout({

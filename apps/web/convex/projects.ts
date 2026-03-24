@@ -20,7 +20,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized")
+      throw new Error("Unauthorized - Create")
     }
 
     const now = Date.now()
@@ -100,7 +100,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized")
+      throw new Error("Unauthorized - Update")
     }
 
     // Check if user has admin or owner role
@@ -132,8 +132,9 @@ export const getProject = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
+
     if (!userId) {
-      throw new Error("Unauthorized")
+      throw new Error("Unauthorized - get Project")
     }
 
     // Verify user is a member of the project
@@ -168,7 +169,7 @@ export const getProjectAnalytics = query({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized")
+      throw new Error("Unauthorized - Analytics")
     }
 
     // Verify user is a member
@@ -239,7 +240,7 @@ export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) {
-      throw new Error("Unauthorized")
+      throw new Error("Unauthorized - Upload URL")
     }
     return await ctx.storage.generateUploadUrl()
   },

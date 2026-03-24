@@ -1,20 +1,18 @@
 "use client"
 
-import { useMutation } from "convex/react"
-import { useState } from "react"
 import { api } from "@/convex/_generated/api"
 import { Doc, Id } from "@/convex/_generated/dataModel"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@workspace/ui/components/button"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@workspace/ui/components/sheet"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
-import { Textarea } from "@workspace/ui/components/textarea"
-import { Label } from "@workspace/ui/components/label"
 import {
   Select,
   SelectContent,
@@ -22,42 +20,78 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@workspace/ui/components/sheet"
+import { useMutation } from "convex/react"
 import { Calendar } from "lucide-react"
+import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+import * as z from "zod"
+import { RichTextEditor } from "@/components/rich-text-editor"
 
 type Task = Doc<"tasks">
+
+const taskFormSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200, "Title is too long"),
+  description: z.string().optional(),
+  status: z.enum(["todo", "in_progress", "done"]),
+  priority: z.enum(["low", "medium", "high"]),
+  dueDate: z.string().optional(),
+})
+
+type TaskFormValues = z.infer<typeof taskFormSchema>
 
 interface TaskDetailSheetProps {
   task: Task
   projectId: Id<"projects">
   open: boolean
   onOpenChange: (open: boolean) => void
+  onEditableChange: (isEditable: boolean) => void
+  isEditable: boolean
 }
 
-export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [title, setTitle] = useState(task.title)
-  const [description, setDescription] = useState(task.description || "")
-  const [status, setStatus] = useState(task.status)
-  const [priority, setPriority] = useState(task.priority)
-  const [dueDate, setDueDate] = useState(
-    task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : ""
-  )
-
+export function TaskDetailSheet({
+  task,
+  open,
+  onOpenChange,
+  isEditable,
+  onEditableChange,
+}: TaskDetailSheetProps) {
   const updateTask = useMutation(api.tasks.update)
 
-  const handleSave = async () => {
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(taskFormSchema),
+    values: {
+      title: task.title,
+      description: task.description || "",
+      status: task.status,
+      priority: task.priority,
+      dueDate: task.dueDate
+        ? new Date(task.dueDate).toISOString().split("T")[0]
+        : "",
+    },
+  })
+
+  const onSubmit = async (values: TaskFormValues) => {
     try {
       await updateTask({
         taskId: task._id,
-        title: title || task.title,
-        description: description || undefined,
-        status,
-        priority,
-        dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
+        title: values.title,
+        description: values.description || undefined,
+        status: values.status,
+        priority: values.priority,
+        dueDate: values.dueDate
+          ? new Date(values.dueDate).getTime()
+          : undefined,
       })
       toast.success("Task updated successfully")
-      setIsEditing(false)
+      form.reset(values)
+      onEditableChange(false)
     } catch (error) {
       toast.error("Failed to update task")
       console.error(error)
@@ -65,12 +99,8 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
   }
 
   const handleCancel = () => {
-    setTitle(task.title)
-    setDescription(task.description || "")
-    setStatus(task.status)
-    setPriority(task.priority)
-    setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "")
-    setIsEditing(false)
+    form.reset()
+    onEditableChange(false)
   }
 
   const formatDate = (timestamp: number) => {
@@ -89,109 +119,162 @@ export function TaskDetailSheet({ task, open, onOpenChange }: TaskDetailSheetPro
           <SheetDescription>View and edit task information</SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 mx-4 space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            {isEditing ? (
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter task title"
+        <div className="mx-4 mt-6 space-y-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    {isEditable ? (
+                      <FormControl>
+                        <Input placeholder="Enter task title" {...field} />
+                      </FormControl>
+                    ) : (
+                      <p className="text-sm">{task.title}</p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            ) : (
-              <p className="text-sm">{task.title}</p>
-            )}
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            {isEditing ? (
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter task description"
-                rows={4}
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <RichTextEditor
+                        content={field.value || ""}
+                        onChange={field.onChange}
+                        placeholder="Enter task description"
+                        editable={isEditable}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            ) : (
-              <p className="text-sm text-muted-foreground">{task.description || "No description"}</p>
-            )}
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              {isEditing ? (
-                <Select value={status} onValueChange={(value: typeof status) => setStatus(value)}>
-                  <SelectTrigger id="status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-sm capitalize">{task.status.replace("_", " ")}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      {isEditable ? (
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="todo">To Do</SelectItem>
+                            <SelectItem value="in_progress">
+                              In Progress
+                            </SelectItem>
+                            <SelectItem value="done">Done</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm capitalize">
+                          {task.status.replace("_", " ")}
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      {isEditable ? (
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm capitalize">{task.priority}</p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="dueDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Due Date</FormLabel>
+                    {isEditable ? (
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                    ) : task.dueDate ? (
+                      <p className="flex items-center gap-2 text-sm">
+                        <Calendar className="size-4" />
+                        {formatDate(task.dueDate)}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No due date set
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {isEditable && (
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" className="flex-1">
+                    Save Changes
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleCancel}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
               )}
-            </div>
+            </form>
+          </Form>
 
-            <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
-              {isEditing ? (
-                <Select value={priority} onValueChange={(value: typeof priority) => setPriority(value)}>
-                  <SelectTrigger id="priority">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-sm capitalize">{task.priority}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dueDate">Due Date</Label>
-            {isEditing ? (
-              <Input
-                id="dueDate"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-            ) : task.dueDate ? (
-              <p className="flex items-center gap-2 text-sm">
-                <Calendar className="size-4" />
-                {formatDate(task.dueDate)}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">No due date set</p>
-            )}
-          </div>
-
-          <div className="flex gap-2 pt-4">
-            {isEditing ? (
-              <>
-                <Button onClick={handleSave} className="flex-1">
-                  Save Changes
-                </Button>
-                <Button onClick={handleCancel} variant="outline" className="flex-1">
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setIsEditing(true)} className="flex-1">
+          {!isEditable && (
+            <div className="flex gap-2 pt-4">
+              <Button onClick={() => onEditableChange(true)} className="flex-1">
                 Edit Task
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

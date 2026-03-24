@@ -1,5 +1,7 @@
 "use client"
 
+import { api } from "@/convex/_generated/api"
+import { Id } from "@/convex/_generated/dataModel"
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar"
+import { useQuery } from "convex/react"
 import {
   CheckSquare,
   FileText,
@@ -22,18 +25,15 @@ import {
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { UserProfileDropdown } from "./user-profile-dropdown"
-import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import { Id } from "@/convex/_generated/dataModel"
 
 interface ProjectSidebarProps {
-  projectId: string
+  projectId: Id<"projects">
 }
 
 export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
   const pathname = usePathname()
-  const project = useQuery(api.projects.getProject, { 
-    projectId: projectId as Id<"projects"> 
+  const project = useQuery(api.projects.getProject, {
+    projectId: projectId,
   })
 
   const projectTitle = project?.title ?? "Project"
@@ -104,7 +104,11 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
 
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                    >
                       <Link href={item.href}>
                         <Icon className="size-4" />
                         <span>{item.label}</span>

@@ -32,11 +32,25 @@ const priorityColors = {
   high: "bg-red-500",
 }
 
-export function TaskCard({ task, projectId, isDragging = false }: TaskCardProps) {
-  const [showDetail, setShowDetail] = useState(false)
+export function TaskCard({
+  task,
+  projectId,
+  isDragging = false,
+}: TaskCardProps) {
+  const [showDetail, setShowDetail] = useState({
+    open: false,
+    isEditable: false,
+  })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging: isSortableDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({
     id: task._id,
   })
 
@@ -61,20 +75,28 @@ export function TaskCard({ task, projectId, isDragging = false }: TaskCardProps)
         {...attributes}
         {...listeners}
         className={cn(
-          "cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md",
-          isDragging && "shadow-lg opacity-50"
+          "cursor-grab transition-shadow hover:shadow-md active:cursor-grabbing",
+          isDragging && "opacity-50 shadow-lg"
         )}
       >
         <CardContent className="p-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 space-y-2">
               <div className="flex items-center gap-2">
-                <div className={cn("h-2 w-2 rounded-full", priorityColors[task.priority])} />
+                <div
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    priorityColors[task.priority]
+                  )}
+                />
                 <h3
-                  className="cursor-pointer text-sm font-medium leading-tight hover:text-primary"
+                  className="cursor-pointer text-sm leading-tight font-medium hover:text-primary"
                   onClick={(e) => {
                     e.stopPropagation()
-                    setShowDetail(true)
+                    setShowDetail({
+                      open: true,
+                      isEditable: false,
+                    })
                   }}
                 >
                   {task.title}
@@ -82,7 +104,10 @@ export function TaskCard({ task, projectId, isDragging = false }: TaskCardProps)
               </div>
 
               {task.description && (
-                <p className="line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
+                <div
+                  className="prose prose-sm line-clamp-2 max-w-none text-xs text-muted-foreground **:my-0 **:leading-tight"
+                  dangerouslySetInnerHTML={{ __html: task.description }}
+                />
               )}
 
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -109,8 +134,26 @@ export function TaskCard({ task, projectId, isDragging = false }: TaskCardProps)
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowDetail(true)}>View details</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowDetail(true)}>Edit task</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    setShowDetail({
+                      open: true,
+                      isEditable: false,
+                    })
+                  }
+                >
+                  View details
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    setShowDetail({
+                      open: true,
+                      isEditable: true,
+                    })
+                  }
+                >
+                  Edit task
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
@@ -127,8 +170,14 @@ export function TaskCard({ task, projectId, isDragging = false }: TaskCardProps)
       <TaskDetailSheet
         task={task}
         projectId={projectId}
-        open={showDetail}
-        onOpenChange={setShowDetail}
+        open={showDetail.open}
+        isEditable={showDetail.isEditable}
+        onOpenChange={(value) =>
+          setShowDetail({ isEditable: false, open: value })
+        }
+        onEditableChange={(isEditable) =>
+          setShowDetail((prev) => ({ ...prev, isEditable }))
+        }
       />
 
       <DeleteTaskDialog

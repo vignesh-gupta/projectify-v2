@@ -16,7 +16,6 @@ import {
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
-import { Textarea } from "@workspace/ui/components/textarea"
 import { Label } from "@workspace/ui/components/label"
 import {
   Select,
@@ -26,6 +25,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { toast } from "sonner"
+import { RichTextEditor } from "@/components/rich-text-editor"
 
 interface CreateTaskDialogProps {
   projectId: Id<"projects">
@@ -112,12 +112,10 @@ export function CreateTaskDialog({ projectId }: CreateTaskDialogProps) {
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+              <RichTextEditor
+                content={description}
+                onChange={setDescription}
                 placeholder="Enter task description (optional)"
-                rows={4}
               />
             </div>
 

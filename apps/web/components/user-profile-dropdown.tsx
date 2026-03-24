@@ -51,7 +51,7 @@ export function UserProfileDropdown() {
   const { signOut } = useAuthActions()
   const { state } = useSidebar()
 
-  const user = useQuery(api.functions.auth.currentUser)
+  const user = useQuery(api.auth.currentUser)
   const isLoading = user === undefined
 
   if (isLoading) {

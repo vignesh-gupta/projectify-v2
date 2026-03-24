@@ -6,13 +6,23 @@ import { api } from "@/convex/_generated/api"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar"
 import { toast } from "sonner"
 import { Loader2, User } from "lucide-react"
 
 export function AccountSettings() {
-  const user = useQuery(api.functions.auth.currentUser)
+  const user = useQuery(api.auth.currentUser)
   const updateProfile = useMutation(api.users.updateProfile)
 
   const [name, setName] = useState("")

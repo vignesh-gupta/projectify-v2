@@ -1,7 +1,7 @@
 # PLAN.md - Projectify v2 Development Plan
 
-**Last Updated**: March 21, 2026  
-**Project Status**: Phase 1 Complete (Foundation), Phase 2 In Progress (Core Features)
+**Last Updated**: March 24, 2026  
+**Project Status**: Phase 1 Complete (Foundation), Phase 2 In Progress (Core Features - 65% Complete)
 
 ---
 
@@ -60,8 +60,9 @@ projectify-v2/
 - [x] User login flow
 - [x] Session management (24-hour duration)
 - [x] Auth context provider
-- [x] Protected route handling
+- [x] Protected route handling with `proxy.ts`
 - [x] User profile queries
+- [x] Route protection for `/project/*` and `/dashboard/*`
 
 **Files Created**:
 - `apps/web/convex/auth.ts`
@@ -69,6 +70,7 @@ projectify-v2/
 - `apps/web/convex/functions/auth.ts`
 - `apps/web/app/(auth)/login/page.tsx`
 - `apps/web/app/(auth)/register/page.tsx`
+- `apps/web/proxy.ts` (Next.js 16 middleware alternative)
 
 #### 1.3 Database Schema
 - [x] Schema definition with Convex
@@ -188,24 +190,42 @@ projectify-v2/
   - Fixed `userId` being null in `getProject` query
   - **Date**: March 21, 2026
 
+- [x] **Fixed**: Authorization error on project pages
+  - Updated `proxy.ts` to protect `/project(.*)` routes
+  - Added `/login` and `/register` to sign-in pages matcher
+  - Fixed TypeScript params type in project layout
+  - Unauthenticated users now redirected to login
+  - **Date**: March 24, 2026
+
+- [x] **Enhanced**: Rich text editor for task descriptions
+  - Integrated Tiptap with full toolbar (bold, italic, underline, etc.)
+  - Added headings (H1, H2, H3), lists, code blocks, links
+  - Implemented superscript, subscript, text alignment
+  - Fixed view mode to be truly non-editable
+  - Fixed HTML rendering in task cards (no raw tags)
+  - **Date**: March 24, 2026
+
 ---
 
 ## Current Status
 
-### 📊 Overall Progress: ~35% Complete
+### 📊 Overall Progress: ~65% Complete
 
 **What's Working**:
 - ✅ Complete authentication system (GitHub OAuth)
 - ✅ Full project CRUD with analytics
 - ✅ Complete team/membership management backend
 - ✅ Task management backend (create, update, delete, list)
+- ✅ Task management UI (Kanban board, data table, dialogs)
+- ✅ Rich text editor for task descriptions (Tiptap)
+- ✅ Drag-and-drop task status updates
 - ✅ User account management (profile, delete account)
 - ✅ Project and user dashboards with analytics
 - ✅ Role-based permissions system
 - ✅ UI component library
+- ✅ Route protection with proxy.ts
 
 **What's Partially Done**:
-- 🚧 Work Items UI (backend ready, UI placeholder)
 - 🚧 Project Settings UI (backend ready, UI placeholder)
 
 **What's Not Started**:
@@ -216,7 +236,7 @@ projectify-v2/
 - ❌ Changelog management
 - ❌ Group messaging
 - ❌ Team concept (multi-project teams)
-- ❌ Member management UI
+- ❌ Notification system
 
 ---
 
@@ -235,41 +255,66 @@ projectify-v2/
 
 ---
 
-### Phase 2: Core Features 🔄 (30% Complete)
+### Phase 2: Core Features 🔄 (65% Complete)
 **Current Phase - Estimated Duration**: 4-6 weeks  
 **Priority**: HIGH
 
-#### 2.1 Task Management UI (Not Started)
-- [ ] Create `TaskBoard` component (Kanban view)
-- [ ] Create `TaskList` component (List view)
-- [ ] Create `TaskCard` component
-- [ ] Create `CreateTaskDialog` component
-- [ ] Create `TaskDetailSheet` component
-- [ ] Implement drag-and-drop for status changes
-- [ ] Add task filtering (by status, assignee, priority)
-- [ ] Add task sorting
-- [ ] Implement task search
-- [ ] Add loading & empty states
+#### 2.1 Task Management UI ✅ (100% Complete)
+- [x] Create `TaskKanbanBoard` component (Kanban view)
+- [x] Create `TaskDataTable` component (Table view)
+- [x] Create `TaskCard` component with HTML rendering
+- [x] Create `CreateTaskDialog` component with rich text editor
+- [x] Create `TaskDetailSheet` component with edit mode
+- [x] Implement drag-and-drop for status changes (@dnd-kit)
+- [x] Add task filtering (by status, assignee, priority)
+- [x] Add task sorting
+- [x] Implement Tiptap rich text editor for descriptions
+- [x] Add toolbar with formatting options (bold, italic, underline, etc.)
+- [x] Add headings, lists, code blocks, links, super/subscript
+- [x] Add text alignment options
+- [x] Fix view mode to be non-editable
+- [x] Fix HTML rendering in task cards
+- [x] Add loading & empty states
+- [x] Add delete task dialog with confirmation
 
-**Files to Create**:
+**Files Created**:
 ```
 apps/web/app/project/[id]/work-items/
-├── page.tsx (replace placeholder)
+├── page.tsx ✅
+├── loading.tsx ✅
+├── error.tsx ✅
 └── components/
-    ├── task-board.tsx
-    ├── task-list.tsx
-    ├── task-card.tsx
-    ├── create-task-dialog.tsx
-    ├── task-detail-sheet.tsx
-    └── task-filters.tsx
+    ├── task-kanban-board.tsx ✅
+    ├── task-data-table.tsx ✅
+    ├── task-card.tsx ✅ (with HTML rendering)
+    ├── task-columns.tsx ✅
+    ├── kanban-column.tsx ✅
+    ├── create-task-dialog.tsx ✅ (with rich text editor)
+    ├── task-detail-sheet.tsx ✅ (with rich text editor)
+    └── delete-task-dialog.tsx ✅
+
+apps/web/components/
+└── rich-text-editor.tsx ✅ (Tiptap integration)
 ```
 
+**Dependencies Added**:
+- @tiptap/react
+- @tiptap/starter-kit
+- @tiptap/extension-link
+- @tiptap/extension-underline
+- @tiptap/extension-superscript
+- @tiptap/extension-subscript
+- @tiptap/extension-text-align
+- @dnd-kit/core
+- @dnd-kit/sortable
+- @dnd-kit/utilities
+
 #### 2.2 Complete Authentication Options (Not Started)
-- [ ] Implement email/password authentication
+  - [ ] Implement email/password authentication
   - [ ] Add email/password provider to Convex Auth
   - [ ] Create email verification flow
   - [ ] Add password reset functionality
-- [ ] Implement Google OAuth
+  - [ ] Implement Google OAuth
   - [ ] Add Google provider to Convex Auth config
   - [ ] Update login/register pages
   - [ ] Test OAuth flow
