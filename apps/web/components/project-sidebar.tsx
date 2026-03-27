@@ -22,6 +22,8 @@ import {
   Settings,
   Star,
 } from "lucide-react"
+import * as Icons from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { UserProfileDropdown } from "./user-profile-dropdown"
@@ -36,7 +38,40 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
     projectId: projectId,
   })
 
+  // Get project icon URL if storage ID exists
+  const iconUrl = useQuery(api.projects.getIconUrl, {
+    storageId: project?.iconStorageId,
+  })
+
   const projectTitle = project?.title ?? "Project"
+
+  // Render the project icon
+  const renderProjectIcon = () => {
+    // If we have a storage icon URL, render the image
+    if (iconUrl) {
+      return (
+        <Image
+          src={iconUrl}
+          alt={projectTitle}
+          width={16}
+          height={16}
+          className="size-4 rounded object-cover"
+        />
+      )
+    }
+
+    // If we have a Lucide icon name, render that icon
+    if (project?.iconName) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const IconComponent = (Icons as any)[project.iconName]
+      if (IconComponent) {
+        return <IconComponent className="size-4 text-primary-foreground" />
+      }
+    }
+
+    // Default to FolderOpen if no icon is set
+    return <FolderOpen className="size-4 text-primary-foreground" />
+  }
 
   const navItems = [
     {
@@ -82,7 +117,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2">
           <div className="flex size-8 items-center justify-center rounded bg-primary">
-            <FolderOpen className="size-4 text-primary-foreground" />
+            {renderProjectIcon()}
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold text-sidebar-foreground">

@@ -10,12 +10,6 @@ import { ProjectsList } from "./dashboard/projects-list"
 import type { Project } from "./dashboard/project-card"
 import { CreateProjectDialog } from "./dashboard/create-project-dialog"
 
-function getProjectIcon(title: string): string {
-  const icons = ["🎯", "🎨", "🎭", "📱", "💡", "🚀", "⚡", "🔥", "✨", "🌟"]
-  const index = title.charCodeAt(0) % icons.length
-  return icons[index] || "📁"
-}
-
 function getProjectIconBg(status: string): string {
   switch (status) {
     case "maintenance":
@@ -69,7 +63,7 @@ export default function DashboardPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const router = useRouter()
 
-  const convexProjects = useQuery(api.projects.list)
+  const convexProjects = useQuery(api.projects.listWithDetails)
   const isLoading = convexProjects === undefined
 
   // Transform Convex projects to UI format
@@ -80,17 +74,16 @@ export default function DashboardPage() {
       const statusInfo = getProjectStatus(project.status!)
       return {
         id: project._id! as string,
-        icon: getProjectIcon(project.title!),
+        iconName: project.iconName,
         iconBg: getProjectIconBg(project.status!),
         title: project.title!,
         description: project.description!,
         status: statusInfo.label,
         statusColor: statusInfo.color,
-        // eslint-disable-next-line react-hooks/purity
-        progress: Math.floor(Math.random() * 100), // TODO: Calculate actual progress from tasks
+        progress: project.progress || 0,
         progressColor: getProgressColor(project.status!),
         updated: formatRelativeTime(project.updatedAt!),
-        members: ["👤"], // TODO: Get actual member avatars from memberships
+        members: project.members || [],
       }
     })
   }, [convexProjects])
@@ -99,12 +92,27 @@ export default function DashboardPage() {
   const stats: Stat[] = useMemo(() => {
     const projectCount = projects.length
     const activeProjects = projects.filter((p) => p.status === "ACTIVE").length
+    
+    // Calculate total tasks across all projects
+    const totalTasks = convexProjects?.reduce(
+      (sum, project) => sum + (project.totalTasks || 0),
+      0
+    ) || 0
+
+    // Get unique team members count across all projects
+    const uniqueMemberIds = new Set<string>()
+    convexProjects?.forEach((project) => {
+      project.members?.forEach((member) => {
+        uniqueMemberIds.add(member.id)
+      })
+    })
+    const teamMembersCount = uniqueMemberIds.size
 
     return [
       {
         label: "TOTAL TASKS",
-        value: "0", // TODO: Get from tasks query
-        detail: "Coming soon",
+        value: String(totalTasks),
+        detail: totalTasks === 1 ? "task" : "tasks",
         icon: "📊",
       },
       {
@@ -121,12 +129,12 @@ export default function DashboardPage() {
       },
       {
         label: "TEAM MEMBERS",
-        value: "1", // TODO: Get unique member count
-        detail: "You",
+        value: String(teamMembersCount),
+        detail: teamMembersCount === 1 ? "member" : "members",
         icon: "👥",
       },
     ]
-  }, [projects])
+  }, [projects, convexProjects])
 
   const handleCreateProject = () => {
     setIsCreateDialogOpen(true)

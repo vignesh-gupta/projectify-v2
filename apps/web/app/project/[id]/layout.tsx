@@ -5,7 +5,7 @@ import { ReactNode } from "react"
 
 interface ProjectLayoutProps {
   children: ReactNode
-  params: Promise<{ id: Id<"projects"> }>
+  params: Promise<{ id: string }>
 }
 
 export default async function ProjectLayout({
@@ -16,7 +16,7 @@ export default async function ProjectLayout({
 
   return (
     <SidebarProvider>
-      <ProjectSidebar projectId={id} />
+      <ProjectSidebar projectId={id as Id<"projects">} />
       <SidebarInset>
         <main className="flex h-full flex-1 flex-col overflow-y-auto">
           {children}

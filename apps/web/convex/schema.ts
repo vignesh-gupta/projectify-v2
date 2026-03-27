@@ -13,7 +13,8 @@ const schema = defineSchema({
       v.literal("inactive")
     ),
     dueDate: v.optional(v.number()), // Made optional for flexibility
-    iconStorageId: v.optional(v.id("_storage")), // Null = show project initials
+    iconStorageId: v.optional(v.id("_storage")), // For uploaded images
+    iconName: v.optional(v.string()), // For predefined Lucide icons
     createdAt: v.number(),
     updatedAt: v.number(),
   })

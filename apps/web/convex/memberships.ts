@@ -129,7 +129,7 @@ export const remove = mutation({
 })
 
 /**
- * Get all members of a project
+ * Get all members of a project with user details
  */
 export const listByProject = query({
   args: {
@@ -153,9 +153,26 @@ export const listByProject = query({
       throw new Error("Not a member of this project")
     }
 
-    return await ctx.db
+    const memberships = await ctx.db
       .query("memberships")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect()
+
+    // Fetch user details for each membership
+    const membershipsWithUsers = await Promise.all(
+      memberships.map(async (m) => {
+        const user = await ctx.db.get(m.userId)
+        return {
+          ...m,
+          user: user ? {
+            name: user.name,
+            email: user.email,
+            image: user.image,
+          } : null,
+        }
+      })
+    )
+
+    return membershipsWithUsers
   },
 })

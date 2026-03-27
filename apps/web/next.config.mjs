@@ -8,6 +8,11 @@ const nextConfig = {
         hostname: "www.google.com",
         pathname: "/s2/favicons/**",
       },
+      {
+        protocol: "https",
+        hostname: "brave-bullfrog-153.eu-west-1.convex.cloud",
+        pathname: "**",
+      },
     ],
   },
 }

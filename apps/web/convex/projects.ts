@@ -80,6 +80,90 @@ export const list = query({
 })
 
 /**
+ * Get all projects for the current user with enriched data (members, tasks, progress)
+ */
+export const listWithDetails = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      return []
+    }
+
+    // Get user's project memberships
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect()
+
+    // Get full project details with enriched data
+    const projects = await Promise.all(
+      memberships.map(async (membership) => {
+        const project = await ctx.db.get(membership.projectId)
+        if (!project) return null
+
+        // Get all team members for this project
+        const projectMemberships = await ctx.db
+          .query("memberships")
+          .withIndex("by_project", (q) => q.eq("projectId", membership.projectId))
+          .collect()
+
+        // Get user details for each member
+        const members = await Promise.all(
+          projectMemberships.map(async (m) => {
+            const user = await ctx.db.get(m.userId)
+            return user
+              ? {
+                  id: m.userId,
+                  name: user.name ?? "Unknown",
+                  email: user.email ?? "",
+                  image: user.image,
+                }
+              : null
+          })
+        )
+
+        // Get all tasks for this project
+        const tasks = await ctx.db
+          .query("tasks")
+          .withIndex("by_project", (q) => q.eq("projectId", membership.projectId))
+          .collect()
+
+        // Calculate progress based on completed tasks
+        const completedTasks = tasks.filter((t) => t.status === "done").length
+        const totalTasks = tasks.length
+        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+        return {
+          ...project,
+          role: membership.role,
+          members: members.filter((m) => m !== null),
+          progress,
+          totalTasks,
+          completedTasks,
+        }
+      })
+    )
+
+    return projects.filter((p) => p !== null)
+  },
+})
+
+/**
+ * Get icon URL from storage
+ */
+export const getIconUrl = query({
+  args: { storageId: v.optional(v.id("_storage")) },
+  handler: async (ctx, args) => {
+    if (!args.storageId) {
+      return null
+    }
+
+    return await ctx.storage.getUrl(args.storageId)
+  },
+})
+
+/**
  * Update a project
  */
 export const update = mutation({
@@ -96,6 +180,7 @@ export const update = mutation({
     ),
     dueDate: v.optional(v.number()),
     iconStorageId: v.optional(v.id("_storage")),
+    iconName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -116,10 +201,38 @@ export const update = mutation({
     }
 
     const { projectId, ...updates } = args
-    await ctx.db.patch(projectId, {
+    
+    // Build update object, handling icon clearing logic
+    const updateData: Record<string, unknown> = {
       ...updates,
       updatedAt: Date.now(),
-    })
+    }
+    
+    // If iconStorageId is provided (even if undefined), handle icon clearing
+    if ("iconStorageId" in args) {
+      if (args.iconStorageId) {
+        // New storage icon: set it and clear iconName
+        updateData.iconStorageId = args.iconStorageId
+        updateData.iconName = undefined
+      } else {
+        // Explicitly clearing storage icon
+        updateData.iconStorageId = undefined
+      }
+    }
+    
+    // If iconName is provided (even if undefined), handle icon clearing
+    if ("iconName" in args) {
+      if (args.iconName) {
+        // New icon name: set it and clear iconStorageId
+        updateData.iconName = args.iconName
+        updateData.iconStorageId = undefined
+      } else {
+        // Explicitly clearing icon name
+        updateData.iconName = undefined
+      }
+    }
+
+    await ctx.db.patch(projectId, updateData)
 
     return projectId
   },
@@ -229,6 +342,137 @@ export const getProjectAnalytics = query({
           ? Math.round((taskStats.done / taskStats.total) * 100)
           : 0,
     }
+  },
+})
+
+/**
+ * Clear all project data (tasks, resources, folders) without deleting the project
+ */
+export const clearProjectData = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized - Clear Data")
+    }
+
+    // Check if user has admin or owner role
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId)
+      )
+      .first()
+
+    if (!membership || membership.role === "member") {
+      throw new Error("Only owners and admins can clear project data")
+    }
+
+    // Delete all tasks
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const task of tasks) {
+      await ctx.db.delete(task._id)
+    }
+
+    // Delete all resources
+    const resources = await ctx.db
+      .query("resources")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const resource of resources) {
+      await ctx.db.delete(resource._id)
+    }
+
+    // Delete all folders
+    const folders = await ctx.db
+      .query("folders")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const folder of folders) {
+      await ctx.db.delete(folder._id)
+    }
+
+    return {
+      success: true,
+      cleared: {
+        tasks: tasks.length,
+        resources: resources.length,
+        folders: folders.length,
+      },
+    }
+  },
+})
+
+/**
+ * Delete a project and all related data
+ */
+export const deleteProject = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized - Delete Project")
+    }
+
+    // Check if user has admin or owner role
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId)
+      )
+      .first()
+
+    if (!membership || membership.role === "member") {
+      throw new Error("Only owners and admins can delete projects")
+    }
+
+    // Delete all tasks
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const task of tasks) {
+      await ctx.db.delete(task._id)
+    }
+
+    // Delete all resources
+    const resources = await ctx.db
+      .query("resources")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const resource of resources) {
+      await ctx.db.delete(resource._id)
+    }
+
+    // Delete all folders
+    const folders = await ctx.db
+      .query("folders")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const folder of folders) {
+      await ctx.db.delete(folder._id)
+    }
+
+    // Delete all memberships
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const m of memberships) {
+      await ctx.db.delete(m._id)
+    }
+
+    // Finally, delete the project
+    await ctx.db.delete(args.projectId)
+
+    return { success: true }
   },
 })
 

@@ -1,10 +1,19 @@
 "use client"
 
 import { motion, Variants } from "motion/react"
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
+import * as LucideIcons from "lucide-react"
+
+export interface ProjectMember {
+  id: string
+  name: string
+  email: string
+  image?: string
+}
 
 export interface Project {
   id: number | string
-  icon: string
+  iconName?: string
   iconBg: string
   title: string
   description: string
@@ -13,7 +22,7 @@ export interface Project {
   progress: number
   progressColor: string
   updated: string
-  members: string[]
+  members: ProjectMember[]
 }
 
 interface ProjectCardProps {
@@ -44,7 +53,20 @@ const cardHoverVariants: Variants = {
   },
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(" ")
+  if (parts.length >= 2) {
+    return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase()
+  }
+  return (name.slice(0, 2) || "?").toUpperCase()
+}
+
 export function ProjectCard({ project, onClick }: ProjectCardProps) {
+  // Get the Lucide icon component
+  const IconComponent = project.iconName
+    ? (LucideIcons[project.iconName as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>) || LucideIcons.FolderOpen
+    : LucideIcons.FolderOpen
+
   return (
     <motion.div variants={itemVariants}>
       <motion.div
@@ -58,12 +80,12 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           {/* Project Icon & Status */}
           <div className="mb-4 flex items-start justify-between">
             <motion.div
-              className={`flex size-12 items-center justify-center ${project.iconBg} text-2xl text-card`}
+              className={`flex size-12 items-center justify-center ${project.iconBg} text-card`}
               initial={{ scale: 1 }}
               whileHover={{ scale: 1.15 }}
               transition={{ duration: 0.3 }}
             >
-              {project.icon}
+              <IconComponent className="size-6" />
             </motion.div>
             <motion.span
               className={`border px-2 py-1 text-[10px] font-bold tracking-wider ${project.statusColor}`}
@@ -111,18 +133,27 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
 
           {/* Footer */}
           <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              {project.members.map((member, i) => (
+            <div className="flex items-center -space-x-2">
+              {project.members.slice(0, 5).map((member, i) => (
                 <motion.div
-                  key={i}
-                  className="flex size-7 items-center justify-center bg-muted text-xs"
+                  key={member.id}
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: i * 0.1, duration: 0.3 }}
+                  transition={{ delay: i * 0.05, duration: 0.3 }}
                 >
-                  {member}
+                  <Avatar size="sm" className="ring-2 ring-background">
+                    {member.image && <AvatarImage src={member.image} alt={member.name} />}
+                    <AvatarFallback className="text-[10px] font-semibold">
+                      {getInitials(member.name)}
+                    </AvatarFallback>
+                  </Avatar>
                 </motion.div>
               ))}
+              {project.members.length > 5 && (
+                <div className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-background">
+                  +{project.members.length - 5}
+                </div>
+              )}
             </div>
             <span className="text-xs text-muted-foreground">
               Updated {project.updated}
