@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as memberships from "../memberships.js";
+import type * as messages from "../messages.js";
 import type * as projects from "../projects.js";
 import type * as resources from "../resources.js";
 import type * as tasks from "../tasks.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   folders: typeof folders;
   http: typeof http;
   memberships: typeof memberships;
+  messages: typeof messages;
   projects: typeof projects;
   resources: typeof resources;
   tasks: typeof tasks;

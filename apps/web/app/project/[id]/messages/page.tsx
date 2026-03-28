@@ -1,30 +1,38 @@
-import { Construction } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
+"use client"
+
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { type Id } from "@/convex/_generated/dataModel"
+import { MessageList } from "./components/message-list"
+import { MessageInput } from "./components/message-input"
+import { Loader2 } from "lucide-react"
+import { useParams } from "next/navigation"
 
 export default function MessagesPage() {
+  const { id } = useParams<{ id: Id<"projects"> }>()
+
+  const messages = useQuery(api.messages.list, { projectId: id })
+
+  if (messages === undefined) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Group Messaging</h1>
-        <p className="text-muted-foreground">
-          Communicate with your team effortlessly using our built-in group messaging feature.
+    <div className="flex h-full flex-col">
+      <div className="border-b px-6 py-4">
+        <h1 className="text-2xl font-semibold">Messages</h1>
+        <p className="text-sm text-muted-foreground">
+          Chat with your team members
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Construction className="size-5" />
-            Coming Soon
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            This feature is currently under development. You&apos;ll be able to chat with your
-            team members, share updates, and collaborate in real-time here.
-          </p>
-        </CardContent>
-      </Card>
+      <MessageList messages={messages} projectId={id} />
+
+      <MessageInput projectId={id} />
     </div>
   )
 }

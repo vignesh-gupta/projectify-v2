@@ -32,7 +32,7 @@ export default function RootLayout({
           notoSans.variable
         )}
       >
-        <body>
+        <body suppressHydrationWarning>
           <ConvexClientProvider>
             <ThemeProvider>
               <TooltipProvider>

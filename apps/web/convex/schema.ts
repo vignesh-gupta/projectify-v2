@@ -90,6 +90,30 @@ const schema = defineSchema({
     .index("by_project_type", ["projectId", "type"])
     .index("by_parent", ["parentId"])
     .index("by_project_parent", ["projectId", "parentId"]),
+
+  messages: defineTable({
+    projectId: v.id("projects"),
+    authorId: v.id("users"),
+    content: v.string(),
+    threadId: v.optional(v.id("messages")), // For message threading
+    attachments: v.optional(v.array(v.id("_storage"))),
+    reactions: v.optional(
+      v.array(
+        v.object({
+          emoji: v.string(),
+          userId: v.id("users"),
+        })
+      )
+    ),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    deletedAt: v.optional(v.number()), // Soft delete
+  })
+    .index("by_project", ["projectId"])
+    .index("by_author", ["authorId"])
+    .index("by_thread", ["threadId"])
+    .index("by_project_created", ["projectId", "createdAt"])
+    .index("by_thread_created", ["threadId", "createdAt"]),
 })
 
-export default schema 
+export default schema

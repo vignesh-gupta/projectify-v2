@@ -3,6 +3,22 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 
 /**
+ * Get current authenticated user
+ */
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      return null
+    }
+
+    const user = await ctx.db.get(userId)
+    return user
+  },
+})
+
+/**
  * Update current user's profile
  */
 export const updateProfile = mutation({
