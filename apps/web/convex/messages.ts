@@ -94,8 +94,8 @@ export const list = query({
           author: author
             ? {
                 _id: author._id,
-                name: author.name,
-                email: author.email,
+                name: author.name ?? null,
+                email: author.email ?? "",
                 image: author.image,
               }
             : null,
@@ -151,8 +151,8 @@ export const getThread = query({
           author: author
             ? {
                 _id: author._id,
-                name: author.name,
-                email: author.email,
+                name: author.name ?? null,
+                email: author.email ?? "",
                 image: author.image,
               }
             : null,
@@ -336,8 +336,8 @@ export const search = query({
           author: author
             ? {
                 _id: author._id,
-                name: author.name,
-                email: author.email,
+                name: author.name ?? null,
+                email: author.email ?? "",
                 image: author.image,
               }
             : null,

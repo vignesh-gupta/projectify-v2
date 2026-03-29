@@ -15,12 +15,10 @@ export default async function ProjectLayout({
   const { id } = await params
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="items-stretch">
       <ProjectSidebar projectId={id as Id<"projects">} />
-      <SidebarInset>
-        <main className="flex h-full flex-1 flex-col overflow-y-auto">
-          {children}
-        </main>
+      <SidebarInset className="flex flex-col overflow-y-auto bg-sidebar px-1 py-1.5 min-h-full">
+        <div className="flex-1 rounded-[20] bg-background">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )

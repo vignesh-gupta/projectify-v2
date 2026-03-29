@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react"
 import { type Id } from "@/convex/_generated/dataModel"
 import { MessageItem } from "./message-item"
+import { ScrollArea } from "@workspace/ui/components/scroll-area"
 
 export interface Message {
   _id: Id<"messages">
@@ -17,8 +18,8 @@ export interface Message {
   deletedAt?: number
   author: {
     _id: Id<"users">
-    name?: string | null
-    email?: string
+    name: string | null
+    email: string
     image?: string
   } | null
 }
@@ -33,7 +34,10 @@ export function MessageList({ messages, projectId }: MessageListProps) {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      const scrollViewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
+      if (scrollViewport) {
+        scrollViewport.scrollTop = scrollViewport.scrollHeight
+      }
     }
   }, [messages])
 
@@ -53,9 +57,9 @@ export function MessageList({ messages, projectId }: MessageListProps) {
   }
 
   return (
-    <div
+    <ScrollArea
       ref={scrollRef}
-      className="flex-1 overflow-y-auto p-6 space-y-4"
+      className="max-h-[calc(100dvh-250px)] flex-1 space-y-4 p-6"
     >
       {messages.map((message) => (
         <MessageItem
@@ -64,6 +68,6 @@ export function MessageList({ messages, projectId }: MessageListProps) {
           projectId={projectId}
         />
       ))}
-    </div>
+    </ScrollArea>
   )
 }

@@ -1,9 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { type Id } from "@/convex/_generated/dataModel"
+import { useAuth } from "@/hooks/use-auth"
 import {
   Avatar,
   AvatarFallback,
@@ -17,20 +16,40 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { cn } from "@workspace/ui/lib/utils"
+import { useMutation, useQuery } from "convex/react"
+import { formatDistanceToNow } from "date-fns"
 import {
+  Check,
+  MessageSquare,
   MoreVertical,
   Pencil,
-  Trash2,
-  MessageSquare,
   Smile,
-  Check,
+  Trash2,
   X,
 } from "lucide-react"
+import { useState } from "react"
 import { toast } from "sonner"
-import { formatDistanceToNow } from "date-fns"
 import { MessageThread } from "./message-thread"
-import { useAuth } from "@/hooks/use-auth"
-import { Message } from "./message-list"
+
+interface Message {
+  _id: Id<"messages">
+  projectId: Id<"projects">
+  authorId: Id<"users">
+  content: string
+  threadId?: Id<"messages">
+  attachments?: Id<"_storage">[]
+  reactions?: Array<{ emoji: string; userId: Id<"users"> }>
+  createdAt: number
+  updatedAt?: number
+  deletedAt?: number
+  author: {
+    _id: Id<"users">
+    name: string | null
+    email: string
+    image?: string
+  } | null
+}
 
 interface MessageItemProps {
   message: Message
@@ -49,16 +68,19 @@ export function MessageItem({
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(message.content)
   const [showThread, setShowThread] = useState(false)
+  const [isReactionDropdownOpen, setIsReactionDropdownOpen] = useState(false)
 
   const updateMessage = useMutation(api.messages.update)
   const deleteMessage = useMutation(api.messages.remove)
   const addReaction = useMutation(api.messages.addReaction)
-  const threadMessages = useQuery(
-    api.messages.getThread,
-    showThread ? { threadId: message._id } : "skip"
-  )
+
+  // Always fetch thread count
+  const threadMessages = useQuery(api.messages.getThread, {
+    threadId: message._id,
+  })
 
   const isAuthor = user?._id === message.authorId
+  const isCurrentUser = user?._id === message.authorId
 
   const handleUpdate = async () => {
     if (!editContent.trim()) {
@@ -105,7 +127,7 @@ export function MessageItem({
     }
   }
 
-  const getInitials = (name: string | null, email: string) => {
+  const getInitials = (email: string, name?: string | null) => {
     if (name) {
       return name
         .split(" ")
@@ -128,23 +150,34 @@ export function MessageItem({
     {} as Record<string, Id<"users">[]>
   )
 
+  const replyCount = threadMessages?.length || 0
+
   return (
     <div className={isReply ? "ml-12" : ""}>
-      <div className="group flex gap-3">
-        <Avatar className="h-10 w-10">
+      <div
+        className={cn(
+          "group flex gap-3",
+          isCurrentUser ? "flex-row-reverse" : ""
+        )}
+      >
+        <Avatar className="mt-4 size-10 shrink-0">
           <AvatarImage src={message.author?.image} />
           <AvatarFallback>
-            {getInitials(
-              message.author?.name ?? null,
-              message.author?.email ?? "U"
-            )}
+            {getInitials(message.author?.email ?? "U", message.author?.name)}
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 space-y-1">
+        <div
+          className={cn(
+            "flex-1 space-y-1",
+            isCurrentUser ? "flex flex-col items-end" : ""
+          )}
+        >
           <div className="flex items-baseline gap-2">
-            <span className="font-semibold">
-              {message.author?.name || message.author?.email}
+            <span className="text-sm font-semibold">
+              {isCurrentUser
+                ? "You"
+                : message.author?.name || message.author?.email}
             </span>
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(message.createdAt, { addSuffix: true })}
@@ -153,11 +186,12 @@ export function MessageItem({
           </div>
 
           {isEditing ? (
-            <div className="space-y-2">
+            <div className="w-full space-y-2">
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 className="min-h-15"
+                autoFocus
               />
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleUpdate}>
@@ -178,43 +212,77 @@ export function MessageItem({
               </div>
             </div>
           ) : (
-            <p className="text-sm wrap-break-word whitespace-pre-wrap">
-              {message.content}
-            </p>
-          )}
-
-          {groupedReactions && Object.keys(groupedReactions).length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {Object.entries(groupedReactions).map(([emoji, userIds]) => (
-                <Button
-                  key={emoji}
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2"
-                  onClick={() => handleReaction(emoji)}
-                >
-                  <span>{emoji}</span>
-                  <span className="ml-1 text-xs">{userIds.length}</span>
-                </Button>
-              ))}
+            <div
+              className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                isCurrentUser
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted"
+              }`}
+            >
+              <p className="text-sm wrap-break-word whitespace-pre-wrap">
+                {message.content}
+              </p>
             </div>
           )}
 
-          <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <DropdownMenu>
+          {groupedReactions && Object.keys(groupedReactions).length > 0 && (
+            <div
+              className={`flex flex-wrap gap-1 ${isCurrentUser ? "justify-end" : ""}`}
+            >
+              {Object.entries(groupedReactions).map(([emoji, userIds]) => {
+                const hasUserReacted =
+                  user && userIds.some((id) => id === user._id)
+                return (
+                  <Button
+                    key={emoji}
+                    variant={hasUserReacted ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => handleReaction(emoji)}
+                  >
+                    <span>{emoji}</span>
+                    <span className="ml-1 text-xs">{userIds.length}</span>
+                  </Button>
+                )
+              })}
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "flex gap-1 transition-opacity",
+              isReactionDropdownOpen
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100",
+              isCurrentUser && "flex-row-reverse"
+            )}
+          >
+            <DropdownMenu
+              open={isReactionDropdownOpen}
+              onOpenChange={setIsReactionDropdownOpen}
+            >
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 px-2">
                   <Smile className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="flex gap-1 min-w-fit">
+              <DropdownMenuContent
+                className="flex min-w-fit gap-1 p-2"
+                align={isCurrentUser ? "end" : "start"}
+                onCloseAutoFocus={(e) => e.preventDefault()}
+              >
                 {COMMON_EMOJIS.map((emoji) => (
-                  <DropdownMenuItem
+                  <button
                     key={emoji}
-                    onClick={() => handleReaction(emoji)}
+                    onClick={() => {
+                      handleReaction(emoji)
+                      setIsReactionDropdownOpen(false)
+                    }}
+                    className="rounded p-1.5 transition-colors hover:bg-accent"
+                    title={`React with ${emoji}`}
                   >
-                    <span className="text-lg">{emoji}</span>
-                  </DropdownMenuItem>
+                    <span className="text-xl">{emoji}</span>
+                  </button>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -227,8 +295,8 @@ export function MessageItem({
                 onClick={() => setShowThread(!showThread)}
               >
                 <MessageSquare className="h-4 w-4" />
-                {threadMessages && threadMessages.length > 0 && (
-                  <span className="ml-1 text-xs">{threadMessages.length}</span>
+                {replyCount > 0 && (
+                  <span className="ml-1 text-xs">{replyCount}</span>
                 )}
               </Button>
             )}
@@ -240,7 +308,7 @@ export function MessageItem({
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align={isCurrentUser ? "end" : "start"}>
                   <DropdownMenuItem onClick={() => setIsEditing(true)}>
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit
@@ -260,11 +328,7 @@ export function MessageItem({
       </div>
 
       {showThread && !isReply && (
-        <MessageThread
-          threadId={message._id}
-          projectId={projectId}
-          onClose={() => setShowThread(false)}
-        />
+        <MessageThread threadId={message._id} projectId={projectId} />
       )}
     </div>
   )

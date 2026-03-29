@@ -10,13 +10,11 @@ import { Loader2 } from "lucide-react"
 interface MessageThreadProps {
   threadId: Id<"messages">
   projectId: Id<"projects">
-  onClose: () => void
 }
 
 export function MessageThread({
   threadId,
   projectId,
-  onClose,
 }: MessageThreadProps) {
   const replies = useQuery(api.messages.getThread, { threadId })
 
