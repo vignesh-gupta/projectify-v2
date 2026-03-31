@@ -304,3 +304,62 @@ export const getFolderPath = query({
     return path
   },
 })
+
+/**
+ * Ensure messages folder exists for a project, create if needed
+ */
+export const ensureMessagesFolder = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    // Verify user is a member of the project
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("Not a member of this project")
+    }
+
+    // Check if messages folder already exists
+    const existingFolder = await ctx.db
+      .query("folders")
+      .withIndex("by_project_type", (q) =>
+        q.eq("projectId", args.projectId).eq("type", "file")
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("name"), "messages"),
+          q.eq(q.field("parentId"), undefined)
+        )
+      )
+      .first()
+
+    if (existingFolder) {
+      return existingFolder._id
+    }
+
+    // Create messages folder
+    const now = Date.now()
+    const folderId = await ctx.db.insert("folders", {
+      projectId: args.projectId,
+      name: "messages",
+      type: "file",
+      parentId: undefined,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: userId,
+    })
+
+    return folderId
+  },
+})

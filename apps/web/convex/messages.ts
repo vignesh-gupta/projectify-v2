@@ -1,6 +1,23 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
+import { Id } from "./_generated/dataModel"
+
+// Generate upload URL for file attachments
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+// Get attachment URL from storage
+export const getAttachmentUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId)
+  },
+})
 
 // Send a new message
 export const send = mutation({
@@ -8,7 +25,15 @@ export const send = mutation({
     projectId: v.id("projects"),
     content: v.string(),
     threadId: v.optional(v.id("messages")),
-    attachments: v.optional(v.array(v.id("_storage"))),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          storageId: v.id("_storage"),
+          name: v.string(),
+          type: v.string(),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -37,6 +62,60 @@ export const send = mutation({
       if (parentMessage.projectId !== args.projectId) {
         throw new Error("Parent message belongs to different project")
       }
+    }
+
+    // If there are attachments, ensure messages folder exists and create resource entries
+    let messagesFolderId: Id<"folders"> | undefined
+    if (args.attachments && args.attachments.length > 0) {
+      // Check if messages folder already exists
+      const existingFolder = await ctx.db
+        .query("folders")
+        .withIndex("by_project_type", (q) =>
+          q.eq("projectId", args.projectId).eq("type", "file")
+        )
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("name"), "messages"),
+            q.eq(q.field("parentId"), undefined)
+          )
+        )
+        .first()
+
+      if (existingFolder) {
+        messagesFolderId = existingFolder._id
+      } else {
+        // Create messages folder
+        const now = Date.now()
+        messagesFolderId = await ctx.db.insert("folders", {
+          projectId: args.projectId,
+          name: "messages",
+          type: "file",
+          parentId: undefined,
+          createdAt: now,
+          updatedAt: now,
+          createdBy: userId,
+        })
+      }
+
+      const attachmentsInsertPromises = []
+
+      // Create resource entries for each attachment
+      const now = Date.now()
+      for (const attachment of args.attachments) {
+        const res = ctx.db.insert("resources", {
+          projectId: args.projectId,
+          type: "file",
+          name: attachment.name,
+          folderId: messagesFolderId,
+          storageId: attachment.storageId,
+          fileType: attachment.type,
+          createdAt: now,
+          updatedAt: now,
+          createdBy: userId,
+        })
+        attachmentsInsertPromises.push(res)
+      }
+      await Promise.all(attachmentsInsertPromises)
     }
 
     const messageId = await ctx.db.insert("messages", {
@@ -266,7 +345,7 @@ export const addReaction = mutation({
     }
 
     const reactions = message.reactions || []
-    
+
     // Check if user already reacted with this emoji
     const existingReaction = reactions.find(
       (r) => r.emoji === args.emoji && r.userId === userId
@@ -353,7 +432,51 @@ export const search = query({
 export const getUnreadCount = query({
   args: {
     projectId: v.id("projects"),
-    lastReadAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      return 0
+    }
+
+    // Check if user is a member of the project
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId)
+      )
+      .first()
+
+    if (!membership) {
+      return 0
+    }
+
+    // Get last read timestamp
+    const readStatus = await ctx.db
+      .query("messageReadStatus")
+      .withIndex("by_user_project", (q) =>
+        q.eq("userId", userId).eq("projectId", args.projectId)
+      )
+      .first()
+
+    const lastReadAt = readStatus?.lastReadAt ?? 0
+
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_project_created", (q) => q.eq("projectId", args.projectId))
+      .filter((q) => q.eq(q.field("deletedAt"), undefined))
+      .filter((q) => q.gt(q.field("createdAt"), lastReadAt))
+      .filter((q) => q.neq(q.field("authorId"), userId)) // Exclude own messages
+      .collect()
+
+    return messages.length
+  },
+})
+
+// Mark messages as read for a project
+export const markAsRead = mutation({
+  args: {
+    projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -373,14 +496,30 @@ export const getUnreadCount = query({
       throw new Error("Not a member of this project")
     }
 
-    const messages = await ctx.db
-      .query("messages")
-      .withIndex("by_project_created", (q) => q.eq("projectId", args.projectId))
-      .filter((q) => q.eq(q.field("deletedAt"), undefined))
-      .filter((q) => q.gt(q.field("createdAt"), args.lastReadAt))
-      .filter((q) => q.neq(q.field("authorId"), userId)) // Exclude own messages
-      .collect()
+    const now = Date.now()
 
-    return messages.length
+    // Check if read status exists
+    const existingStatus = await ctx.db
+      .query("messageReadStatus")
+      .withIndex("by_user_project", (q) =>
+        q.eq("userId", userId).eq("projectId", args.projectId)
+      )
+      .first()
+
+    if (existingStatus) {
+      // Update existing
+      await ctx.db.patch(existingStatus._id, {
+        lastReadAt: now,
+      })
+    } else {
+      // Create new
+      await ctx.db.insert("messageReadStatus", {
+        userId,
+        projectId: args.projectId,
+        lastReadAt: now,
+      })
+    }
+
+    return { success: true }
   },
 })

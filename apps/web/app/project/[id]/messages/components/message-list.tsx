@@ -11,7 +11,11 @@ export interface Message {
   authorId: Id<"users">
   content: string
   threadId?: Id<"messages">
-  attachments?: Id<"_storage">[]
+  attachments?: Array<{
+    storageId: Id<"_storage">
+    name: string
+    type: string
+  }>
   reactions?: Array<{ emoji: string; userId: Id<"users"> }>
   createdAt: number
   updatedAt?: number
@@ -34,7 +38,9 @@ export function MessageList({ messages, projectId }: MessageListProps) {
 
   useEffect(() => {
     if (scrollRef.current) {
-      const scrollViewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
+      const scrollViewport = scrollRef.current.querySelector(
+        "[data-radix-scroll-area-viewport]"
+      )
       if (scrollViewport) {
         scrollViewport.scrollTop = scrollViewport.scrollHeight
       }

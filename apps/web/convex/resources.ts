@@ -144,7 +144,7 @@ export const listByProject = query({
     // Build query based on arguments
     let resources
 
-    if (args.folderId !== undefined) {
+    if (!args.folderId) {
       // Query by folder (including null for root)
       resources = await ctx.db
         .query("resources")

@@ -31,6 +31,8 @@ import {
 import { useState } from "react"
 import { toast } from "sonner"
 import { MessageThread } from "./message-thread"
+import { MessageAttachment } from "./message-attachment"
+import { Mention } from "./mention"
 
 interface Message {
   _id: Id<"messages">
@@ -38,7 +40,11 @@ interface Message {
   authorId: Id<"users">
   content: string
   threadId?: Id<"messages">
-  attachments?: Id<"_storage">[]
+  attachments?: Array<{
+    storageId: Id<"_storage">
+    name: string
+    type: string
+  }>
   reactions?: Array<{ emoji: string; userId: Id<"users"> }>
   createdAt: number
   updatedAt?: number
@@ -212,17 +218,52 @@ export function MessageItem({
               </div>
             </div>
           ) : (
-            <div
-              className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                isCurrentUser
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
-              }`}
-            >
-              <p className="text-sm wrap-break-word whitespace-pre-wrap">
-                {message.content}
-              </p>
-            </div>
+            <>
+              <div
+                className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                  isCurrentUser
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
+                }`}
+              >
+                <p className="text-sm wrap-break-word whitespace-pre-wrap">
+                  {message.content.split(/(@\w+(?:\s+\w+)?)/g).map((part, index) => {
+                    if (part.startsWith("@")) {
+                      return (
+                        <Mention
+                          key={index}
+                          mention={part}
+                          projectId={projectId}
+                          className={cn(
+                            "font-semibold cursor-pointer hover:underline",
+                            isCurrentUser
+                              ? "text-primary-foreground/90"
+                              : "text-primary"
+                          )}
+                        />
+                      )
+                    }
+                    return part
+                  })}
+                </p>
+              </div>
+              
+              {/* Attachments */}
+              {message.attachments && message.attachments.length > 0 && (
+                <div className={cn(
+                  "flex flex-wrap gap-2 mt-2",
+                  isCurrentUser ? "justify-end" : ""
+                )}>
+                  {message.attachments.map((attachment, index) => (
+                    <MessageAttachment
+                      key={`${attachment.storageId}-${index}`}
+                      attachment={attachment}
+                      projectId={projectId}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {groupedReactions && Object.keys(groupedReactions).length > 0 && (

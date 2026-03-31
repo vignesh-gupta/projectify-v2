@@ -498,18 +498,30 @@ apps/web/components/
 - react-dropzone (for drag-and-drop uploads)
 - lucide-react (for file type icons)
 
-#### 3.2 Group Messaging (Not Started)
-- [ ] Design messages schema with threading
-- [ ] Create backend functions (send, list, update, delete)
-- [ ] Build real-time message list
-- [ ] Create message input component
-- [ ] Implement message threading
-- [ ] Add file attachments to messages
-- [ ] Add message reactions
-- [ ] Implement @mentions
-- [ ] Add typing indicators
-- [ ] Add message search
-- [ ] Implement unread message counter
+#### 3.2 Group Messaging (Complete) ✅
+- [x] Design messages schema with threading
+- [x] Create backend functions (send, list, update, delete)
+- [x] Build real-time message list
+- [x] Create message input component
+- [x] Implement message threading
+- [x] Add file attachments to messages
+- [x] Add message reactions
+- [x] Implement @mentions
+- [x] Add typing indicators
+- [x] Add message search
+- [x] Implement unread message counter
+
+**All bugs fixed (Round 2)**:
+- [x] Fixed mention autocomplete positioning with viewport-aware logic (Math.max to prevent off-screen)
+- [x] Fixed mention regex to only capture @username (not extra words after)
+- [x] Fixed mention hover popover overflow with fixed positioning and viewport detection
+- [x] Auto-create messages folder in resources if not exists (ensureMessagesFolder mutation)
+- [x] Navigate to resources with folderId instead of folder name query param
+- [x] Preserved original file names in attachments (during upload and after sending)
+- [x] Fixed message list scrolling (proper flex layout without page scroll)
+- [x] Implemented proper file download (blob creation with anchor element)
+- [x] Added navigation to resources page on attachment click
+
 
 **Database Schema**:
 ```typescript
@@ -518,21 +530,46 @@ messages: defineTable({
   authorId: v.id("users"),
   content: v.string(),
   threadId: v.optional(v.id("messages")),
-  attachments: v.optional(v.array(v.id("_storage"))),
+  attachments: v.optional(v.array(v.object({
+    storageId: v.id("_storage"),
+    name: v.string(),
+    type: v.string(),
+  }))),
   reactions: v.optional(v.object({})), // emoji: userId[]
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),
   deletedAt: v.optional(v.number()),
 })
+
+messageReadStatus: defineTable({
+  userId: v.id("users"),
+  projectId: v.id("projects"),
+  messageId: v.id("messages"),
+  readAt: v.number(),
+})
+
+typingStatus: defineTable({
+  userId: v.id("users"),
+  projectId: v.id("projects"),
+  lastTypingAt: v.number(),
+})
 ```
 
-**Files to Create**:
-- `apps/web/convex/messages.ts`
-- `apps/web/app/project/[id]/messages/page.tsx`
-- `apps/web/app/project/[id]/messages/components/message-list.tsx`
-- `apps/web/app/project/[id]/messages/components/message-item.tsx`
-- `apps/web/app/project/[id]/messages/components/message-input.tsx`
-- `apps/web/app/project/[id]/messages/components/message-thread.tsx`
+**Files Created**:
+- `apps/web/convex/messages.ts` - Backend functions with file upload support
+- `apps/web/convex/typing.ts` - Typing indicator backend
+- `apps/web/convex/mentions.ts` - @mention autocomplete backend
+- `apps/web/app/project/[id]/messages/page.tsx` - Main messages page with search
+- `apps/web/app/project/[id]/messages/components/message-list.tsx` - Real-time message display
+- `apps/web/app/project/[id]/messages/components/message-item.tsx` - Individual message with reactions
+- `apps/web/app/project/[id]/messages/components/message-input.tsx` - Input with file upload, typing, @mentions
+- `apps/web/app/project/[id]/messages/components/message-thread.tsx` - Threading UI
+- `apps/web/app/project/[id]/messages/components/message-search.tsx` - Search dialog
+- `apps/web/app/project/[id]/messages/components/message-attachment.tsx` - Attachment display with download
+- `apps/web/app/project/[id]/messages/components/typing-indicator.tsx` - Animated typing status
+- `apps/web/app/project/[id]/messages/components/mention-autocomplete.tsx` - @mention dropdown
+- `apps/web/app/project/[id]/messages/components/mention.tsx` - Mention hover popover
+
 
 #### 3.3 Feedback System (Not Started)
 - [ ] Design feedback schema

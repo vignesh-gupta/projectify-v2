@@ -96,7 +96,15 @@ const schema = defineSchema({
     authorId: v.id("users"),
     content: v.string(),
     threadId: v.optional(v.id("messages")), // For message threading
-    attachments: v.optional(v.array(v.id("_storage"))),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          storageId: v.id("_storage"),
+          name: v.string(),
+          type: v.string(),
+        })
+      )
+    ),
     reactions: v.optional(
       v.array(
         v.object({
@@ -114,6 +122,22 @@ const schema = defineSchema({
     .index("by_thread", ["threadId"])
     .index("by_project_created", ["projectId", "createdAt"])
     .index("by_thread_created", ["threadId", "createdAt"]),
+
+  // Track last read message timestamp per user per project
+  messageReadStatus: defineTable({
+    userId: v.id("users"),
+    projectId: v.id("projects"),
+    lastReadAt: v.number(), // Timestamp of when user last read messages
+  }).index("by_user_project", ["userId", "projectId"]),
+
+  // Track who is currently typing in each project
+  typingStatus: defineTable({
+    userId: v.id("users"),
+    projectId: v.id("projects"),
+    lastTypingAt: v.number(), // Timestamp of last typing activity
+  })
+    .index("by_user_project", ["userId", "projectId"])
+    .index("by_project", ["projectId"]),
 })
 
 export default schema

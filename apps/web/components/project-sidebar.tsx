@@ -13,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@workspace/ui/components/sidebar"
+import { Badge } from "@workspace/ui/components/badge"
 import { useQuery } from "convex/react"
 import {
   CheckSquare,
@@ -35,6 +36,11 @@ interface ProjectSidebarProps {
 export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
   const pathname = usePathname()
   const project = useQuery(api.projects.getProject, {
+    projectId: projectId,
+  })
+
+  // Get unread message count
+  const unreadCount = useQuery(api.messages.getUnreadCount, {
     projectId: projectId,
   })
 
@@ -136,6 +142,7 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon
+                const showBadge = item.label === "Messages" && unreadCount && unreadCount > 0
 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -147,6 +154,14 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
                       <Link href={item.href}>
                         <Icon className="size-4" />
                         <span>{item.label}</span>
+                        {showBadge && (
+                          <Badge
+                            variant="destructive"
+                            className="ml-auto h-5 min-w-5 px-1 text-xs"
+                          >
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </Badge>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

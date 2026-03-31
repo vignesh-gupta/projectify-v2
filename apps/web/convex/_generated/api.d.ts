@@ -12,10 +12,12 @@ import type * as auth from "../auth.js";
 import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as memberships from "../memberships.js";
+import type * as mentions from "../mentions.js";
 import type * as messages from "../messages.js";
 import type * as projects from "../projects.js";
 import type * as resources from "../resources.js";
 import type * as tasks from "../tasks.js";
+import type * as typing from "../typing.js";
 import type * as users from "../users.js";
 
 import type {
@@ -29,10 +31,12 @@ declare const fullApi: ApiFromModules<{
   folders: typeof folders;
   http: typeof http;
   memberships: typeof memberships;
+  mentions: typeof mentions;
   messages: typeof messages;
   projects: typeof projects;
   resources: typeof resources;
   tasks: typeof tasks;
+  typing: typeof typing;
   users: typeof users;
 }>;
 
