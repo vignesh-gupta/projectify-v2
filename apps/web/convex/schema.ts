@@ -54,6 +54,54 @@ const schema = defineSchema({
     .index("by_project_status", ["projectId", "status"]) // Efficient filtering
     .index("by_created_at", ["createdAt"]),
 
+  feedback: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    description: v.string(),
+    category: v.union(
+      v.literal("bug"),
+      v.literal("feature"),
+      v.literal("improvement")
+    ),
+    status: v.union(
+      v.literal("new"),
+      v.literal("under_review"),
+      v.literal("planned"),
+      v.literal("in_progress"),
+      v.literal("done"),
+      v.literal("rejected")
+    ),
+    votes: v.number(),
+    isPublic: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_status", ["projectId", "status"])
+    .index("by_project_category", ["projectId", "category"])
+    .index("by_project_public", ["projectId", "isPublic"])
+    .index("by_project_created_at", ["projectId", "createdAt"]),
+
+  feedbackVotes: defineTable({
+    feedbackId: v.id("feedback"),
+    userId: v.optional(v.id("users")),
+    anonymousId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_feedback", ["feedbackId"])
+    .index("by_feedback_user", ["feedbackId", "userId"])
+    .index("by_feedback_anonymous", ["feedbackId", "anonymousId"])
+    .index("by_user", ["userId"])
+    .index("by_anonymous", ["anonymousId"]),
+
+  feedbackComments: defineTable({
+    feedbackId: v.id("feedback"),
+    authorId: v.id("users"),
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_feedback", ["feedbackId"]),
+
   resources: defineTable({
     projectId: v.id("projects"),
     type: v.union(v.literal("file"), v.literal("link")),

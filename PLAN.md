@@ -581,6 +581,7 @@ typingStatus: defineTable({
 - [ ] Add feedback status workflow
 - [ ] Create convert-to-task functionality
 - [ ] Build public feedback board (for external users)
+- [ ] Build public feedback integration api and a simple sheet doc on the page (for external integration)
 - [ ] Add feedback categories
 
 **Database Schema**:
