@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, internalMutation } from "./_generated/server"
+import { internal } from "./_generated/api"
 
 /**
  * Create a new task
@@ -51,6 +52,18 @@ export const create = mutation({
       updatedAt: now,
       createdBy: userId,
     })
+
+    // Create notification if task is assigned to someone
+    if (args.assigneeUserId && args.assigneeUserId !== userId) {
+      await ctx.scheduler.runAfter(0, internal.tasks.createAssignmentNotification, {
+        userId: args.assigneeUserId,
+        taskId,
+        projectId: args.projectId,
+        triggeredBy: userId,
+        type: "task_assigned",
+        taskTitle: args.title,
+      })
+    }
 
     return taskId
   },
@@ -118,6 +131,7 @@ export const update = mutation({
     ),
     dueDate: v.optional(v.number()),
     assigneeUserId: v.optional(v.id("users")),
+    clearAssignee: v.optional(v.boolean()), // Explicitly clear assignee
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -142,11 +156,51 @@ export const update = mutation({
       throw new Error("Not a member of this project")
     }
 
-    const { taskId, ...updates } = args
-    await ctx.db.patch(taskId, {
+    // Track assignee changes for notifications
+    const oldAssignee = task.assigneeUserId
+    const newAssignee = args.clearAssignee ? undefined : args.assigneeUserId
+
+    const { taskId, clearAssignee, ...updates } = args
+    
+    // Prepare updates
+    const patchData: Record<string, unknown> = {
       ...updates,
       updatedAt: Date.now(),
-    })
+    }
+    
+    // Handle assignee clearing
+    if (args.clearAssignee) {
+      patchData.assigneeUserId = undefined
+    }
+    
+    await ctx.db.patch(taskId, patchData)
+
+    // Create notifications for assignee changes
+    if (oldAssignee !== newAssignee) {
+      // Notify if someone was unassigned
+      if (oldAssignee && oldAssignee !== userId) {
+        await ctx.scheduler.runAfter(0, internal.tasks.createAssignmentNotification, {
+          userId: oldAssignee,
+          taskId,
+          projectId: task.projectId,
+          triggeredBy: userId,
+          type: "task_unassigned",
+          taskTitle: task.title,
+        })
+      }
+
+      // Notify if someone was assigned
+      if (newAssignee && newAssignee !== userId && newAssignee !== oldAssignee) {
+        await ctx.scheduler.runAfter(0, internal.tasks.createAssignmentNotification, {
+          userId: newAssignee,
+          taskId,
+          projectId: task.projectId,
+          triggeredBy: userId,
+          type: "task_assigned",
+          taskTitle: updates.title || task.title,
+        })
+      }
+    }
 
     return taskId
   },
@@ -187,5 +241,34 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.taskId)
+  },
+})
+
+/**
+ * Internal mutation to create assignment notifications
+ * Called by task create/update mutations via scheduler
+ */
+export const createAssignmentNotification = internalMutation({
+  args: {
+    userId: v.id("users"),
+    taskId: v.id("tasks"),
+    projectId: v.id("projects"),
+    triggeredBy: v.id("users"),
+    type: v.union(v.literal("task_assigned"), v.literal("task_unassigned")),
+    taskTitle: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      type: args.type,
+      taskId: args.taskId,
+      projectId: args.projectId,
+      triggeredBy: args.triggeredBy,
+      isRead: false,
+      metadata: {
+        taskTitle: args.taskTitle,
+      },
+      createdAt: Date.now(),
+    })
   },
 })

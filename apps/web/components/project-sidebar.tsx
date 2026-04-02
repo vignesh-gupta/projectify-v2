@@ -28,6 +28,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { UserProfileDropdown } from "./user-profile-dropdown"
+import { NotificationDropdown } from "./notification-dropdown"
 
 interface ProjectSidebarProps {
   projectId: Id<"projects">
@@ -121,15 +122,20 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
     <Sidebar variant="inset" collapsible="icon">
       {/* Project Header */}
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2">
-          <div className="flex size-8 items-center justify-center rounded bg-primary">
-            {renderProjectIcon()}
+        <div className="flex items-center justify-between gap-2 px-2">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded bg-primary">
+              {renderProjectIcon()}
+            </div>
+            <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+              <span className="text-sm font-semibold text-sidebar-foreground">
+                {projectTitle}
+              </span>
+              <span className="text-xs text-muted-foreground">Project</span>
+            </div>
           </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold text-sidebar-foreground">
-              {projectTitle}
-            </span>
-            <span className="text-xs text-muted-foreground">Project</span>
+          <div className="group-data-[collapsible=icon]:hidden">
+            <NotificationDropdown />
           </div>
         </div>
       </SidebarHeader>
@@ -142,7 +148,8 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon
-                const showBadge = item.label === "Messages" && unreadCount && unreadCount > 0
+                const showBadge =
+                  item.label === "Messages" && unreadCount && unreadCount > 0
 
                 return (
                   <SidebarMenuItem key={item.href}>

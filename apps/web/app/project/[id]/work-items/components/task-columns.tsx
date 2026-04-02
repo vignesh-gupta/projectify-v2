@@ -1,7 +1,7 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, Calendar, MoreHorizontal } from "lucide-react"
+import { ArrowUpDown, Calendar, MoreHorizontal, User } from "lucide-react"
 import { Doc, Id } from "@/convex/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -15,6 +15,8 @@ import { cn } from "@workspace/ui/lib/utils"
 import { useState } from "react"
 import { TaskDetailSheet } from "./task-detail-sheet"
 import { DeleteTaskDialog } from "./delete-task-dialog"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 
 type Task = Doc<"tasks">
 
@@ -28,6 +30,34 @@ const statusLabels = {
   todo: "To Do",
   in_progress: "In Progress",
   done: "Done",
+}
+
+// Component to render assignee cell with user lookup
+function AssigneeCell({ task, projectId }: { task: Task; projectId: Id<"projects"> }) {
+  const members = useQuery(api.mentions.getProjectMembers, { projectId })
+  const assigneeUser = members?.find((m) => m._id === task.assigneeUserId)
+
+  if (!assigneeUser) {
+    return <span className="text-muted-foreground">Unassigned</span>
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {assigneeUser.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={assigneeUser.image}
+          alt={assigneeUser.name || "User"}
+          className="size-6 rounded-full object-cover"
+        />
+      ) : (
+        <div className="flex size-6 items-center justify-center rounded-full bg-muted">
+          <User className="size-3" />
+        </div>
+      )}
+      <span className="truncate">{assigneeUser.name || assigneeUser.email}</span>
+    </div>
+  )
 }
 
 export function TaskActionsCell({
@@ -204,6 +234,14 @@ export const createTaskColumns = (
           </span>
         </div>
       )
+    },
+  },
+  {
+    accessorKey: "assigneeUserId",
+    header: "Assignee",
+    cell: ({ row }) => {
+      const task = row.original
+      return <AssigneeCell task={task} projectId={projectId} />
     },
   },
   {

@@ -17,6 +17,8 @@ import { cn } from "@workspace/ui/lib/utils"
 import { useState } from "react"
 import { TaskDetailSheet } from "./task-detail-sheet"
 import { DeleteTaskDialog } from "./delete-task-dialog"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 
 type Task = Doc<"tasks">
 
@@ -42,6 +44,10 @@ export function TaskCard({
     isEditable: false,
   })
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  // Query assignee details
+  const members = useQuery(api.mentions.getProjectMembers, { projectId })
+  const assigneeUser = members?.find((m) => m._id === task.assigneeUserId)
 
   const {
     attributes,
@@ -117,10 +123,21 @@ export function TaskCard({
                     <span>{formatDate(task.dueDate)}</span>
                   </div>
                 )}
-                {task.assigneeUserId && (
+                {assigneeUser && (
                   <div className="flex items-center gap-1">
-                    <User className="size-3" />
-                    <span>Assigned</span>
+                    {assigneeUser.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={assigneeUser.image}
+                        alt={assigneeUser.name || "User"}
+                        className="size-4 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="size-3" />
+                    )}
+                    <span className="truncate max-w-[100px]">
+                      {assigneeUser.name || assigneeUser.email}
+                    </span>
                   </div>
                 )}
               </div>

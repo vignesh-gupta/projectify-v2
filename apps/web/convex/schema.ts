@@ -186,6 +186,33 @@ const schema = defineSchema({
   })
     .index("by_user_project", ["userId", "projectId"])
     .index("by_project", ["projectId"]),
+
+  // Notifications for users
+  notifications: defineTable({
+    userId: v.id("users"), // Who receives this notification
+    type: v.union(
+      v.literal("task_assigned"),
+      v.literal("task_unassigned"),
+      v.literal("task_status_changed"),
+      v.literal("task_due_soon")
+    ),
+    taskId: v.optional(v.id("tasks")), // Related task (if applicable)
+    projectId: v.id("projects"), // Related project
+    triggeredBy: v.id("users"), // Who triggered this notification
+    isRead: v.boolean(),
+    metadata: v.optional(
+      v.object({
+        taskTitle: v.optional(v.string()),
+        oldStatus: v.optional(v.string()),
+        newStatus: v.optional(v.string()),
+      })
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_read", ["userId", "isRead"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_task", ["taskId"]),
 })
 
 export default schema

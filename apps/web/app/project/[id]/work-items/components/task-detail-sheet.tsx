@@ -27,12 +27,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@workspace/ui/components/sheet"
-import { useMutation } from "convex/react"
-import { Calendar } from "lucide-react"
+import { useMutation, useQuery } from "convex/react"
+import { Calendar, User } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import * as z from "zod"
 import { RichTextEditor } from "@/components/rich-text-editor"
+import { AssigneeSelector } from "@/components/assignee-selector"
 
 type Task = Doc<"tasks">
 
@@ -42,6 +43,7 @@ const taskFormSchema = z.object({
   status: z.enum(["todo", "in_progress", "done"]),
   priority: z.enum(["low", "medium", "high"]),
   dueDate: z.string().optional(),
+  assigneeUserId: z.string().optional(),
 })
 
 type TaskFormValues = z.infer<typeof taskFormSchema>
@@ -61,8 +63,13 @@ export function TaskDetailSheet({
   onOpenChange,
   isEditable,
   onEditableChange,
+  projectId,
 }: TaskDetailSheetProps) {
   const updateTask = useMutation(api.tasks.update)
+
+  // Query assignee details
+  const members = useQuery(api.mentions.getProjectMembers, { projectId })
+  const assigneeUser = members?.find((m) => m._id === task.assigneeUserId)
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -74,12 +81,22 @@ export function TaskDetailSheet({
       dueDate: task.dueDate
         ? new Date(task.dueDate).toISOString().split("T")[0]
         : "",
+      assigneeUserId: task.assigneeUserId || undefined,
     },
   })
 
   const onSubmit = async (values: TaskFormValues) => {
     try {
-      await updateTask({
+      const updateData: {
+        taskId: Id<"tasks">
+        title: string
+        description?: string
+        status: "todo" | "in_progress" | "done"
+        priority: "low" | "medium" | "high"
+        dueDate?: number
+        assigneeUserId?: Id<"users">
+        clearAssignee?: boolean
+      } = {
         taskId: task._id,
         title: values.title,
         description: values.description || undefined,
@@ -88,7 +105,17 @@ export function TaskDetailSheet({
         dueDate: values.dueDate
           ? new Date(values.dueDate).getTime()
           : undefined,
-      })
+      }
+
+      // Handle assignee update/removal
+      if (values.assigneeUserId) {
+        updateData.assigneeUserId = values.assigneeUserId as Id<"users">
+      } else if (task.assigneeUserId) {
+        // Clear assignee if it was set before
+        updateData.clearAssignee = true
+      }
+
+      await updateTask(updateData)
       toast.success("Task updated successfully")
       form.reset(values)
       onEditableChange(false)
@@ -243,6 +270,47 @@ export function TaskDetailSheet({
                     ) : (
                       <p className="text-sm text-muted-foreground">
                         No due date set
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="assigneeUserId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assignee</FormLabel>
+                    {isEditable ? (
+                      <FormControl>
+                        <AssigneeSelector
+                          projectId={projectId}
+                          value={field.value as Id<"users"> | undefined}
+                          onChange={field.onChange}
+                          placeholder="Assign to someone"
+                        />
+                      </FormControl>
+                    ) : assigneeUser ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        {assigneeUser.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={assigneeUser.image}
+                            alt={assigneeUser.name || "User"}
+                            className="size-6 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex size-6 items-center justify-center rounded-full bg-muted">
+                            <User className="size-3" />
+                          </div>
+                        )}
+                        <span>{assigneeUser.name || assigneeUser.email}</span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Not assigned
                       </p>
                     )}
                     <FormMessage />

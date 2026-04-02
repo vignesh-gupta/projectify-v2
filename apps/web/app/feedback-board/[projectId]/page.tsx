@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useParams } from "next/navigation"
 import { Globe2 } from "lucide-react"
 import { Id } from "@/convex/_generated/dataModel"
@@ -11,10 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import { Badge } from "@workspace/ui/components/badge"
 
 const STORAGE_KEY_PREFIX = "projectify-feedback-anon:"
 
-function getAnonymousId(projectId: string) {
+function getAnonymousId(projectId: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `${STORAGE_KEY_PREFIX}${projectId}:${crypto.randomUUID()}`
   }
@@ -22,38 +23,43 @@ function getAnonymousId(projectId: string) {
   return `${STORAGE_KEY_PREFIX}${projectId}:${Math.random().toString(36).slice(2)}`
 }
 
+function getOrCreateAnonymousId(projectId: string): string {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return ""
+  }
+
+  const storageKey = `${STORAGE_KEY_PREFIX}${projectId}`
+  const existingId = window.localStorage.getItem(storageKey)
+
+  if (existingId) {
+    return existingId
+  }
+
+  const nextId = getAnonymousId(projectId)
+  window.localStorage.setItem(storageKey, nextId)
+  return nextId
+}
+
 export default function PublicFeedbackBoardPage() {
   const params = useParams()
   const projectId = params.projectId as Id<"projects">
-  const [anonymousId, setAnonymousId] = useState("")
-
-  useEffect(() => {
-    const storageKey = `${STORAGE_KEY_PREFIX}${projectId}`
-    const existingId = window.localStorage.getItem(storageKey)
-
-    if (existingId) {
-      setAnonymousId(existingId)
-      return
-    }
-
-    const nextId = getAnonymousId(projectId)
-    window.localStorage.setItem(storageKey, nextId)
-    setAnonymousId(nextId)
-  }, [projectId])
+  const [anonymousId] = useState<string>(() =>
+    getOrCreateAnonymousId(projectId)
+  )
 
   return (
     <main className="min-h-screen bg-muted/30 px-4 py-10 md:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-sm font-medium">
+          <Badge variant="outline" className="px-4 py-1.5 gap-1 text-sm">
             <Globe2 className="size-4" />
             Public feedback board
-          </div>
+          </Badge>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-2xl font-bold tracking-tight">
               Help shape what gets built next
             </h1>
-            <p className="max-w-2xl text-muted-foreground">
+            <p className="max-w-2xl text-sm text-muted-foreground">
               Review published ideas, vote on the ones that matter most, and
               track what the team plans to do next.
             </p>

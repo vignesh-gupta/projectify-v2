@@ -26,6 +26,7 @@ import {
 } from "@workspace/ui/components/select"
 import { toast } from "sonner"
 import { RichTextEditor } from "@/components/rich-text-editor"
+import { AssigneeSelector } from "@/components/assignee-selector"
 
 interface CreateTaskDialogProps {
   projectId: Id<"projects">
@@ -38,6 +39,9 @@ export function CreateTaskDialog({ projectId }: CreateTaskDialogProps) {
   const [status, setStatus] = useState<"todo" | "in_progress" | "done">("todo")
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium")
   const [dueDate, setDueDate] = useState("")
+  const [assigneeUserId, setAssigneeUserId] = useState<Id<"users"> | undefined>(
+    undefined
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const createTask = useMutation(api.tasks.create)
@@ -60,6 +64,7 @@ export function CreateTaskDialog({ projectId }: CreateTaskDialogProps) {
         status,
         priority,
         dueDate: dueDate ? new Date(dueDate).getTime() : undefined,
+        assigneeUserId,
       })
 
       toast.success("Task created successfully")
@@ -70,6 +75,7 @@ export function CreateTaskDialog({ projectId }: CreateTaskDialogProps) {
       setStatus("todo")
       setPriority("medium")
       setDueDate("")
+      setAssigneeUserId(undefined)
       setOpen(false)
     } catch (error) {
       toast.error("Failed to create task")
@@ -156,6 +162,16 @@ export function CreateTaskDialog({ projectId }: CreateTaskDialogProps) {
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="assignee">Assignee</Label>
+              <AssigneeSelector
+                projectId={projectId}
+                value={assigneeUserId}
+                onChange={setAssigneeUserId}
+                placeholder="Assign to someone (optional)"
               />
             </div>
           </div>

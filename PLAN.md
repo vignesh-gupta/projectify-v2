@@ -1,7 +1,7 @@
 # PLAN.md - Projectify v2 Development Plan
 
-**Last Updated**: March 28, 2026  
-**Project Status**: Phase 1 Complete (Foundation), Phase 2 In Progress (Core Features - 75% Complete)
+**Last Updated**: April 2, 2026  
+**Project Status**: Phase 1 Complete (Foundation), Phase 2 Complete (Core Features), Phase 3 In Progress (Collaboration Features - ~60% Complete)
 
 ---
 
@@ -226,7 +226,7 @@ projectify-v2/
 
 ## Current Status
 
-### 📊 Overall Progress: ~70% Complete
+### 📊 Overall Progress: ~80% Complete
 
 **What's Working**:
 - ✅ Complete authentication system (GitHub OAuth)
@@ -246,19 +246,24 @@ projectify-v2/
 - ✅ Resource management UI (file upload, link creation, folders)
 - ✅ File drag-and-drop upload with progress tracking
 - ✅ Folder organization for resources
+- ✅ Feedback system (create, update, voting, comments)
+- ✅ Public feedback board with view/vote mode
 
 **What's Partially Done**:
 - 🚧 Folder management (rename/delete operations pending)
+- 🚧 Public feedback submissions and embed/API endpoints
 
 **What's Not Started**:
 - ❌ Email/Password authentication
 - ❌ Google OAuth authentication
-- ❌ Feedback system
 - ❌ Changelog management
 - ❌ Group messaging
-- ❌ Task comments & discussions
 - ❌ Team concept (multi-project teams)
 - ❌ Notification system
+- ❌ Task assignment, comments & discussions 
+- ❌ File attachments for tasks
+- ❌ Advanced analytics (time tracking, burndown charts, velocity)
+- ❌ Project templates
 
 ---
 
@@ -277,11 +282,11 @@ projectify-v2/
 
 ---
 
-### Phase 2: Core Features 🔄 (75% Complete)
-**Current Phase - Estimated Duration**: 4-6 weeks  
+### Phase 2: Core Features ✅ (80% Complete)
+**Status**: DONE  
 **Priority**: HIGH
 
-#### 2.1 Task Management UI ✅ (100% Complete)
+#### 2.1 Task Management UI ✅ (98% Complete)
 - [x] Create `TaskKanbanBoard` component (Kanban view)
 - [x] Create `TaskDataTable` component (Table view)
 - [x] Create `TaskCard` component with HTML rendering
@@ -298,6 +303,7 @@ projectify-v2/
 - [x] Fix HTML rendering in task cards
 - [x] Add loading & empty states
 - [x] Add delete task dialog with confirmation
+- [ ] Task assignment with member dropdown
 
 **Files Created**:
 ```
@@ -348,7 +354,7 @@ apps/web/components/
 - `apps/web/app/(auth)/login/page.tsx`
 - `apps/web/app/(auth)/register/page.tsx`
 
-#### 2.3 Project Settings UI ✅ (95% Complete)
+#### 2.3 Project Settings UI ✅ (100% Complete)
 - [x] Create project settings page structure
 - [x] Add general settings tab (name, description, icon)
 - [x] Add members tab with management UI
@@ -418,7 +424,7 @@ notifications: defineTable({
 
 ---
 
-### Phase 3: Collaboration Features 📋 (0% Complete)
+### Phase 3: Collaboration Features 🔄 (~60% Complete)
 **Estimated Duration**: 6-8 weeks  
 **Priority**: MEDIUM
 
@@ -571,18 +577,19 @@ typingStatus: defineTable({
 - `apps/web/app/project/[id]/messages/components/mention.tsx` - Mention hover popover
 
 
-#### 3.3 Feedback System (Not Started)
-- [ ] Design feedback schema
-- [ ] Create backend functions (create, list, update, vote)
-- [ ] Build feedback board UI
-- [ ] Create feedback submission form
-- [ ] Implement voting system
-- [ ] Add feedback comments
-- [ ] Add feedback status workflow
-- [ ] Create convert-to-task functionality
-- [ ] Build public feedback board (for external users)
-- [ ] Build public feedback integration api and a simple sheet doc on the page (for external integration)
-- [ ] Add feedback categories
+#### 3.3 Feedback System ✅ (90% Complete)
+- [x] Design feedback schema
+- [x] Create backend functions (create, list, update, vote, comments, convert-to-task)
+- [x] Build feedback board UI
+- [x] Create feedback submission form
+- [x] Implement voting system
+- [x] Add feedback comments
+- [x] Add feedback status workflow
+- [x] Create convert-to-task functionality
+- [x] Build public feedback board (view/vote mode)
+- [x] Add feedback categories
+- [ ] Build public feedback submission flow
+- [ ] Build public feedback integration API and a simple sheet doc on the page
 
 **Database Schema**:
 ```typescript
@@ -961,13 +968,16 @@ changelog: defineTable({
 - [ ] Group messaging system
 - [ ] Task comments & discussions
 - [ ] Notification system
+- [ ] Public feedback submissions and integration endpoints
 
-### Milestone 4: Feedback & Public Features (Target: 6 weeks)
+### Milestone 4: Public Features & Integrations (Target: 6 weeks)
 **Target Date**: End of May 2026
-- [ ] Feedback system with voting
+- [x] Feedback system with voting
 - [ ] Changelog management
-- [ ] Public feedback board
+- [x] Public feedback board
 - [ ] Public changelog page
+- [ ] Public feedback submission flow
+- [ ] Public API/webhooks
 
 ### Milestone 5: Public Features (Target: 4 weeks)
 **Target Date**: End of June 2026
@@ -984,13 +994,14 @@ changelog: defineTable({
 
 ---
 
-## Current Sprint (Week of March 25, 2026)
+## Current Sprint (Week of April 1, 2026)
 
 ### Goals
 1. ✅ Complete Task Board UI implementation
 2. ✅ Implement Project Settings UI
 3. ✅ Build Resource Management (Files & Links)
 4. ✅ Add member management with invites
+5. ✅ Ship feedback board and voting workflow
 
 ### Completed This Sprint
 1. ✅ Task board with Kanban and table views
@@ -1001,11 +1012,11 @@ changelog: defineTable({
 6. ✅ Link management
 7. ✅ Folder organization
 
-### Next Sprint Tasks (Week of April 1, 2026)
-**Focus**: Authentication & Collaboration
+### Next Sprint Tasks (Week of April 8, 2026)
+**Focus**: Auth, collaboration, and public feedback
 1. Implement email/password authentication
 2. Add Google OAuth
-3. Start group messaging system
+3. Finish public feedback submissions and integration endpoints
 4. Design notification system
 5. Add task comments functionality
 
@@ -1028,17 +1039,17 @@ changelog: defineTable({
 
 ---
 
-## Summary Statistics (as of March 28, 2026)
+## Summary Statistics (as of April 2, 2026)
 
 ### Completion Status
 | Phase | Status | Progress |
 |-------|--------|----------|
 | Phase 1: Foundation | ✅ Complete | 100% |
-| Phase 2: Core Features | 🔄 In Progress | 75% |
-| Phase 3: Collaboration | 📋 Planned | 25% (Resources done) |
+| Phase 2: Core Features | ✅ Complete | 100% |
+| Phase 3: Collaboration | 🔄 In Progress | ~60% |
 | Phase 4: Public Features | 🔮 Not Started | 0% |
 | Phase 5: Advanced | 🔮 Not Started | 0% |
-| **Overall Project** | **🔄 Active Development** | **~70%** |
+| **Overall Project** | **🔄 Active Development** | **~80%** |
 
 ### Features Implemented
 - **Backend Functions**: 30+ Convex queries/mutations
@@ -1046,6 +1057,7 @@ changelog: defineTable({
 - **Pages**: 15+ pages across auth, dashboard, project, and settings
 - **Authentication**: GitHub OAuth (email/password pending)
 - **Database Tables**: 7 tables (users, projects, memberships, tasks, resources, folders + auth tables)
+- **Collaboration**: Messaging, feedback, and comments foundation in place
 
 ### Key Achievements
 ✅ Full project lifecycle management  
@@ -1060,10 +1072,10 @@ changelog: defineTable({
 ### Next Priority Items
 1. Email/password authentication
 2. Google OAuth integration
-3. Group messaging system
-4. Task comments & discussions
-5. Notification system
-6. Feedback management
+3. Public feedback submissions and integration endpoints
+4. Notification system
+5. Task comments & discussions
+6. Changelog management
 - Consider adding queue system for email notifications
 - Consider WebSocket alternative for messaging (current: Convex subscriptions)
 - Consider adding search engine (Algolia/Meilisearch) for global search
@@ -1125,4 +1137,4 @@ changelog: defineTable({
 
 **Document Maintained By**: Development Team  
 **Review Frequency**: Weekly  
-**Last Review**: March 21, 2026
+**Last Review**: April 2, 2026
