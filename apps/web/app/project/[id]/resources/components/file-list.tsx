@@ -1,5 +1,6 @@
 "use client"
 
+import { FilePreviewDialog } from "@/components/file-preview-dialog"
 import { useMutation, useQuery } from "convex/react"
 import {
   useState,
@@ -16,6 +17,7 @@ import {
   Trash2,
   Edit2,
   Folder,
+  Eye,
 } from "lucide-react"
 import { api } from "@/convex/_generated/api"
 import { Doc, Id } from "@/convex/_generated/dataModel"
@@ -83,6 +85,7 @@ interface FileCardProps {
   onClick: (fileId: string, index: number, e: React.MouseEvent) => void
   onViewInPath: (folderId: Id<"folders"> | undefined) => void
   onDownload: (storageId: Id<"_storage">) => void
+  onPreview: (file: Resource) => void
   onRename: (file: Resource) => void
   onDelete: (file: Resource) => void
 }
@@ -96,6 +99,7 @@ function FileCardWithPath({
   onClick,
   onViewInPath,
   onDownload,
+  onPreview,
   onRename,
   onDelete,
 }: FileCardProps) {
@@ -163,6 +167,12 @@ function FileCardWithPath({
               <Download className="mr-2 h-4 w-4" />
               Download
             </DropdownMenuItem>
+            {file.storageId && (
+              <DropdownMenuItem onClick={() => onPreview(file)}>
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => onRename(file)}>
               <Edit2 className="mr-2 h-4 w-4" />
               Rename
@@ -203,6 +213,7 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
     const [deleteFile, setDeleteFile] = useState<Resource | null>(null)
     const [downloadingFile, setDownloadingFile] =
       useState<Id<"_storage"> | null>(null)
+    const [previewingFile, setPreviewingFile] = useState<Resource | null>(null)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [draggedIds, setDraggedIds] = useState<string[]>([])
     const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(
@@ -240,6 +251,10 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
     const fileUrl = useQuery(
       api.resources.getFileUrl,
       downloadingFile ? { storageId: downloadingFile } : "skip"
+    )
+    const previewUrl = useQuery(
+      api.resources.getFileUrl,
+      previewingFile?.storageId ? { storageId: previewingFile.storageId } : "skip"
     )
 
     const handleFileUpload = async (file: File) => {
@@ -753,6 +768,7 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
                 onClick={handleFileClick}
                 onViewInPath={handleViewInPath}
                 onDownload={handleDownload}
+                onPreview={setPreviewingFile}
                 onRename={setRenameFile}
                 onDelete={setDeleteFile}
               />
@@ -781,6 +797,25 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
           uploads={uploads}
           onCancel={handleCancelUpload}
           onDismiss={handleDismissUpload}
+        />
+
+        <FilePreviewDialog
+          open={Boolean(previewingFile && previewUrl)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPreviewingFile(null)
+            }
+          }}
+          file={
+            previewingFile && previewUrl
+              ? {
+                  name: previewingFile.name,
+                  type: previewingFile.fileType || "",
+                  url: previewUrl,
+                  size: previewingFile.fileSize,
+                }
+              : null
+          }
         />
       </div>
     )

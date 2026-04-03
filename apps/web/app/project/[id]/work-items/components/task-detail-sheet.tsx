@@ -27,6 +27,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@workspace/ui/components/sheet"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@workspace/ui/components/tabs"
 import { useMutation, useQuery } from "convex/react"
 import { Calendar, User } from "lucide-react"
 import { useForm } from "react-hook-form"
@@ -34,6 +40,8 @@ import { toast } from "sonner"
 import * as z from "zod"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { AssigneeSelector } from "@/components/assignee-selector"
+import { TaskCommentsSection } from "./task-comments-section"
+import { TaskAttachmentsSection } from "./task-attachments-section"
 
 type Task = Doc<"tasks">
 
@@ -70,6 +78,7 @@ export function TaskDetailSheet({
   // Query assignee details
   const members = useQuery(api.mentions.getProjectMembers, { projectId })
   const assigneeUser = members?.find((m) => m._id === task.assigneeUserId)
+  const comments = useQuery(api.taskComments.listByTask, { taskId: task._id })
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -146,203 +155,229 @@ export function TaskDetailSheet({
           <SheetDescription>View and edit task information</SheetDescription>
         </SheetHeader>
 
-        <div className="mx-4 mt-6 space-y-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    {isEditable ? (
-                      <FormControl>
-                        <Input placeholder="Enter task title" {...field} />
-                      </FormControl>
-                    ) : (
-                      <p className="text-sm">{task.title}</p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <div className="mx-4 mt-6">
+          <Tabs defaultValue="details" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="comments">
+                Comments ({comments?.length ?? 0})
+              </TabsTrigger>
+              <TabsTrigger value="attachments">
+                Attachments ({task.attachments?.length ?? 0})
+              </TabsTrigger>
+            </TabsList>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <RichTextEditor
-                        content={field.value || ""}
-                        onChange={field.onChange}
-                        placeholder="Enter task description"
-                        editable={isEditable}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      {isEditable ? (
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+            <TabsContent value="details" className="space-y-6">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        {isEditable ? (
                           <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
+                            <Input placeholder="Enter task title" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in_progress">
-                              In Progress
-                            </SelectItem>
-                            <SelectItem value="done">Done</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <p className="text-sm capitalize">
-                          {task.status.replace("_", " ")}
-                        </p>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      {isEditable ? (
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <p className="text-sm capitalize">{task.priority}</p>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due Date</FormLabel>
-                    {isEditable ? (
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                    ) : task.dueDate ? (
-                      <p className="flex items-center gap-2 text-sm">
-                        <Calendar className="size-4" />
-                        {formatDate(task.dueDate)}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No due date set
-                      </p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="assigneeUserId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assignee</FormLabel>
-                    {isEditable ? (
-                      <FormControl>
-                        <AssigneeSelector
-                          projectId={projectId}
-                          value={field.value as Id<"users"> | undefined}
-                          onChange={field.onChange}
-                          placeholder="Assign to someone"
-                        />
-                      </FormControl>
-                    ) : assigneeUser ? (
-                      <div className="flex items-center gap-2 text-sm">
-                        {assigneeUser.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={assigneeUser.image}
-                            alt={assigneeUser.name || "User"}
-                            className="size-6 rounded-full object-cover"
-                          />
                         ) : (
-                          <div className="flex size-6 items-center justify-center rounded-full bg-muted">
-                            <User className="size-3" />
-                          </div>
+                          <p className="text-sm">{task.title}</p>
                         )}
-                        <span>{assigneeUser.name || assigneeUser.email}</span>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Not assigned
-                      </p>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  />
 
-              {isEditable && (
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <RichTextEditor
+                            content={field.value || ""}
+                            onChange={field.onChange}
+                            placeholder="Enter task description"
+                            editable={isEditable}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          {isEditable ? (
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="todo">To Do</SelectItem>
+                                <SelectItem value="in_progress">
+                                  In Progress
+                                </SelectItem>
+                                <SelectItem value="done">Done</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="text-sm capitalize">
+                              {task.status.replace("_", " ")}
+                            </p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Priority</FormLabel>
+                          {isEditable ? (
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="text-sm capitalize">{task.priority}</p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due Date</FormLabel>
+                        {isEditable ? (
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                        ) : task.dueDate ? (
+                          <p className="flex items-center gap-2 text-sm">
+                            <Calendar className="size-4" />
+                            {formatDate(task.dueDate)}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No due date set
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="assigneeUserId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Assignee</FormLabel>
+                        {isEditable ? (
+                          <FormControl>
+                            <AssigneeSelector
+                              projectId={projectId}
+                              value={field.value as Id<"users"> | undefined}
+                              onChange={field.onChange}
+                              placeholder="Assign to someone"
+                            />
+                          </FormControl>
+                        ) : assigneeUser ? (
+                          <div className="flex items-center gap-2 text-sm">
+                            {assigneeUser.image ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={assigneeUser.image}
+                                alt={assigneeUser.name || "User"}
+                                className="size-6 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex size-6 items-center justify-center rounded-full bg-muted">
+                                <User className="size-3" />
+                              </div>
+                            )}
+                            <span>{assigneeUser.name || assigneeUser.email}</span>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Not assigned
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {isEditable && (
+                    <div className="flex gap-2 pt-4">
+                      <Button type="submit" className="flex-1">
+                        Save Changes
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleCancel}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </form>
+              </Form>
+
+              {!isEditable && (
                 <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1">
-                    Save Changes
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleCancel}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Cancel
+                  <Button onClick={() => onEditableChange(true)} className="flex-1">
+                    Edit Task
                   </Button>
                 </div>
               )}
-            </form>
-          </Form>
+            </TabsContent>
 
-          {!isEditable && (
-            <div className="flex gap-2 pt-4">
-              <Button onClick={() => onEditableChange(true)} className="flex-1">
-                Edit Task
-              </Button>
-            </div>
-          )}
+            <TabsContent value="comments">
+              <TaskCommentsSection projectId={projectId} taskId={task._id} />
+            </TabsContent>
+
+            <TabsContent value="attachments">
+              <TaskAttachmentsSection
+                taskId={task._id}
+                task={task}
+                projectId={projectId}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </SheetContent>
     </Sheet>

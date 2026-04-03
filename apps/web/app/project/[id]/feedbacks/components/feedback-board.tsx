@@ -103,7 +103,7 @@ export function FeedbackBoard({
                 setStatusFilter(value)
               }
             >
-              <SelectTrigger className="min-w-[180px]">
+              <SelectTrigger className="min-w-45">
                 <Filter className="mr-2 size-4" />
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
@@ -123,7 +123,7 @@ export function FeedbackBoard({
                 setCategoryFilter(value)
               }
             >
-              <SelectTrigger className="min-w-[180px]">
+              <SelectTrigger className="min-w-45">
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
@@ -140,7 +140,7 @@ export function FeedbackBoard({
               value={sortBy}
               onValueChange={(value: "top" | "recent") => setSortBy(value)}
             >
-              <SelectTrigger className="min-w-[180px]">
+              <SelectTrigger className="min-w-45">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +187,7 @@ export function FeedbackBoard({
         </div>
       ) : filteredItems.length === 0 ? (
         <Card>
-          <CardContent className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-center">
+          <CardContent className="flex min-h-80 flex-col items-center justify-center gap-3 text-center">
             <MessageSquareMore className="size-12 text-muted-foreground" />
             <h3 className="text-lg font-semibold">
               No feedback matches these filters
