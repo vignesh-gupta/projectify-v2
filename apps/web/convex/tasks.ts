@@ -272,3 +272,156 @@ export const remove = mutation({
     await ctx.db.delete(args.taskId)
   },
 })
+
+/**
+ * Generate upload URL for task attachments
+ */
+export const generateAttachmentUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+/**
+ * Add an attachment to a task
+ */
+export const addAttachment = mutation({
+  args: {
+    taskId: v.id("tasks"),
+    storageId: v.id("_storage"),
+    name: v.string(),
+    type: v.string(),
+    size: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    const task = await ctx.db.get(args.taskId)
+    if (!task) {
+      throw new Error("Task not found")
+    }
+
+    // Verify user is a member of the project
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", task.projectId).eq("userId", userId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("Not a member of this project")
+    }
+
+    const now = Date.now()
+    const newAttachment = {
+      storageId: args.storageId,
+      name: args.name,
+      type: args.type,
+      size: args.size,
+      uploadedBy: userId,
+      uploadedAt: now,
+    }
+
+    const currentAttachments = task.attachments || []
+    
+    await ctx.db.patch(args.taskId, {
+      attachments: [...currentAttachments, newAttachment],
+      updatedAt: now,
+    })
+
+    return task
+  },
+})
+
+/**
+ * Remove an attachment from a task
+ */
+export const removeAttachment = mutation({
+  args: {
+    taskId: v.id("tasks"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    const task = await ctx.db.get(args.taskId)
+    if (!task) {
+      throw new Error("Task not found")
+    }
+
+    // Verify user is a member of the project
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", task.projectId).eq("userId", userId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("Not a member of this project")
+    }
+
+    // Check if user is uploader, admin, or owner
+    const attachment = task.attachments?.find(
+      (a) => a.storageId === args.storageId
+    )
+
+    if (!attachment) {
+      throw new Error("Attachment not found")
+    }
+
+    const canDelete =
+      attachment.uploadedBy === userId ||
+      membership.role === "admin" ||
+      membership.role === "owner"
+
+    if (!canDelete) {
+      throw new Error("Not authorized to delete this attachment")
+    }
+
+    // Remove attachment from task
+    const updatedAttachments = task.attachments?.filter(
+      (a) => a.storageId !== args.storageId
+    )
+
+    await ctx.db.patch(args.taskId, {
+      attachments: updatedAttachments,
+      updatedAt: Date.now(),
+    })
+
+    // Delete file from storage
+    await ctx.storage.delete(args.storageId)
+
+    return task
+  },
+})
+
+/**
+ * Get attachment URL
+ */
+export const getAttachmentUrl = query({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    return await ctx.storage.getUrl(args.storageId)
+  },
+})

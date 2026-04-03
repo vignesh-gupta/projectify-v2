@@ -119,8 +119,8 @@ export const createLink = mutation({
 export const listByProject = query({
   args: {
     projectId: v.id("projects"),
-    type: v.optional(v.union(v.literal("file"), v.literal("link"))),
-    folderId: v.optional(v.union(v.id("folders"), v.null())),
+    type: v.union(v.literal("file"), v.literal("link")),
+    folderId: v.optional(v.id("folders")),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -141,36 +141,17 @@ export const listByProject = query({
       throw new Error("Not a member of this project")
     }
 
-    // Build query based on arguments
-    let resources
-
-    if (!args.folderId) {
-      // Query by folder (including null for root)
-      resources = await ctx.db
-        .query("resources")
-        .withIndex("by_project_folder", (q) =>
-          q
-            .eq("projectId", args.projectId)
-            .eq("folderId", args.folderId === null ? undefined : args.folderId)
-        )
-        .filter((q) => (args.type ? q.eq(q.field("type"), args.type) : true))
-        .order("desc")
-        .take(args.limit || 1000)
-    } else if (args.type) {
-      resources = await ctx.db
-        .query("resources")
-        .withIndex("by_project_type", (q) =>
-          q.eq("projectId", args.projectId).eq("type", args.type!)
-        )
-        .order("desc")
-        .take(args.limit || 1000)
-    } else {
-      resources = await ctx.db
-        .query("resources")
-        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-        .order("desc")
-        .take(args.limit || 1000)
-    }
+    // Query by folder (including null for root)
+    const resources = await ctx.db
+      .query("resources")
+      .withIndex("by_project_folder", (q) =>
+        q
+          .eq("projectId", args.projectId)
+          .eq("folderId", args.folderId === null ? undefined : args.folderId)
+      )
+      .filter((q) => (args.type ? q.eq(q.field("type"), args.type) : true))
+      .order("desc")
+      .take(args.limit || 1000)
 
     return resources
   },
@@ -357,5 +338,99 @@ export const moveResource = mutation({
       folderId: args.folderId,
       updatedAt: Date.now(),
     })
+  },
+})
+
+/**
+ * Search resources by name
+ */
+export const searchResources = query({
+  args: {
+    projectId: v.id("projects"),
+    query: v.string(),
+    type: v.optional(v.union(v.literal("file"), v.literal("link"))),
+    folderId: v.optional(v.id("folders")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    // Verify user is a member of the project
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId)
+      )
+      .first()
+
+    if (!membership) {
+      throw new Error("Not a member of this project")
+    }
+
+    // Get all resources for the project
+    let resources = await ctx.db
+      .query("resources")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+
+    // Filter by type if specified
+    if (args.type) {
+      resources = resources.filter((r) => r.type === args.type)
+    }
+
+    // Filter by folder if specified
+    if (args.folderId) {
+      resources = resources.filter((r) => r.folderId === args.folderId)
+    }
+
+    // Search by name (case-insensitive)
+    const searchQuery = args.query.toLowerCase()
+    resources = resources.filter((r) =>
+      r.name.toLowerCase().includes(searchQuery)
+    )
+
+    // Get folder paths for context
+    const resourcesWithPath = await Promise.all(
+      resources.map(async (resource) => {
+        let folderPath: string[] = []
+
+        if (resource.folderId) {
+          const path = await ctx.db
+            .query("folders")
+            .filter((q) => q.eq(q.field("_id"), resource.folderId))
+            .first()
+
+          if (path) {
+            // Get full folder path
+            const pathResult = await ctx.db
+              .query("folders")
+              .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+              .collect()
+
+            // Build folder path breadcrumb
+            const buildPath = (folderId: string): string[] => {
+              const folder = pathResult.find((f) => f._id === folderId)
+              if (!folder) return []
+
+              if (folder.parentId) {
+                return [...buildPath(folder.parentId), folder.name]
+              }
+              return [folder.name]
+            }
+
+            folderPath = buildPath(resource.folderId)
+          }
+        }
+
+        return {
+          ...resource,
+          folderPath,
+        }
+      })
+    )
+
+    return resourcesWithPath
   },
 })

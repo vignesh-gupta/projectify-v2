@@ -15,6 +15,8 @@ const notificationArgs = {
   messageId: v.optional(v.id("messages")),
   projectId: v.id("projects"),
   triggeredBy: v.id("users"),
+  title: v.optional(v.string()),
+  message: v.optional(v.string()),
   metadata: v.optional(
     v.object({
       taskTitle: v.optional(v.string()),
@@ -39,6 +41,8 @@ export const createInternal = internalMutation({
       messageId: args.messageId,
       projectId: args.projectId,
       triggeredBy: args.triggeredBy,
+      title: args.title || "",
+      message: args.message || "",
       isRead: false,
       metadata: args.metadata,
       createdAt: Date.now(),

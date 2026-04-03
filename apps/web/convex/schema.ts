@@ -44,6 +44,18 @@ const schema = defineSchema({
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     dueDate: v.optional(v.number()),
     assigneeUserId: v.optional(v.id("users")),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          storageId: v.id("_storage"),
+          name: v.string(),
+          type: v.string(),
+          size: v.number(),
+          uploadedBy: v.id("users"),
+          uploadedAt: v.number(),
+        })
+      )
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
     createdBy: v.id("users"), // Track who created the task
@@ -187,6 +199,32 @@ const schema = defineSchema({
     .index("by_user_project", ["userId", "projectId"])
     .index("by_project", ["projectId"]),
 
+  // Task comments for discussions
+  taskComments: defineTable({
+    taskId: v.id("tasks"),
+    authorId: v.id("users"),
+    content: v.string(),
+    threadId: v.optional(v.id("taskComments")),
+    mentions: v.optional(v.array(v.id("users"))),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          storageId: v.id("_storage"),
+          name: v.string(),
+          type: v.string(),
+          size: v.number(),
+        })
+      )
+    ),
+    reactions: v.optional(v.object({})), // emoji: userId[]
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_task", ["taskId", "createdAt"])
+    .index("by_thread", ["threadId", "createdAt"])
+    .index("by_author", ["authorId"]),
+
   // Notifications for users
   notifications: defineTable({
     userId: v.id("users"), // Who receives this notification
@@ -195,12 +233,18 @@ const schema = defineSchema({
       v.literal("task_unassigned"),
       v.literal("task_status_changed"),
       v.literal("task_due_soon"),
-      v.literal("message_mentioned")
+      v.literal("message_mentioned"),
+      v.literal("task_comment"),
+      v.literal("comment_mention"),
+      v.literal("comment_reply")
     ),
     taskId: v.optional(v.id("tasks")), // Related task (if applicable)
+    commentId: v.optional(v.id("taskComments")), // Related comment (if applicable)
     messageId: v.optional(v.id("messages")), // Related message (if applicable)
     projectId: v.id("projects"), // Related project
     triggeredBy: v.id("users"), // Who triggered this notification
+    title: v.string(), // Notification title
+    message: v.string(), // Notification message
     isRead: v.boolean(),
     metadata: v.optional(
       v.object({
