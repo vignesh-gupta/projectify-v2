@@ -282,11 +282,11 @@ projectify-v2/
 
 ---
 
-### Phase 2: Core Features ✅ (80% Complete)
+### Phase 2: Core Features ✅ (95% Complete)
 **Status**: DONE  
 **Priority**: HIGH
 
-#### 2.1 Task Management UI ✅ (98% Complete)
+#### 2.1 Task Management UI ✅ (100% Complete)
 - [x] Create `TaskKanbanBoard` component (Kanban view)
 - [x] Create `TaskDataTable` component (Table view)
 - [x] Create `TaskCard` component with HTML rendering
@@ -303,7 +303,7 @@ projectify-v2/
 - [x] Fix HTML rendering in task cards
 - [x] Add loading & empty states
 - [x] Add delete task dialog with confirmation
-- [ ] Task assignment with member dropdown
+- [x] Task assignment with member dropdown
 
 **Files Created**:
 ```
@@ -395,14 +395,14 @@ apps/web/app/project/[id]/settings/components/
 └── invite-member-dialog.tsx ✅
 ```
 
-#### 2.5 Notification System (Not Started)
-- [ ] Design notification schema
-- [ ] Create backend functions for notifications
-- [ ] Add notification bell icon to header
-- [ ] Create notification dropdown
-- [ ] Implement real-time notification updates
-- [ ] Add notification preferences
-- [ ] Mark as read functionality
+#### 2.5 Notification System ✅ (100% Complete)
+- [x] Design notification schema
+- [x] Create backend functions for notifications
+- [x] Add notification bell icon to header
+- [x] Create notification dropdown
+- [x] Implement real-time notification updates
+- [x] Add notification preferences
+- [x] Mark as read functionality
 
 **Database Schema**:
 ```typescript

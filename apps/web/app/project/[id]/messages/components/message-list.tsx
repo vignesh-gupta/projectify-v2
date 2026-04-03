@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef, useEffect } from "react"
 import { type Id } from "@/convex/_generated/dataModel"
+import { useScroll } from "@/hook/use-scroll"
+import { Button } from "@workspace/ui/components/button"
+import { useRef } from "react"
 import { MessageItem } from "./message-item"
-import { ScrollArea } from "@workspace/ui/components/scroll-area"
 
 export interface Message {
   _id: Id<"messages">
@@ -31,21 +32,39 @@ export interface Message {
 interface MessageListProps {
   messages: Message[]
   projectId: Id<"projects">
+  status: "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted"
+  isLoading: boolean
+  loadMore: (numItems: number) => void
 }
 
-export function MessageList({ messages, projectId }: MessageListProps) {
-  const scrollRef = useRef<HTMLDivElement>(null)
+interface MessageRowProps {
+  message: Message
+  projectId: Id<"projects">
+}
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      const scrollViewport = scrollRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      )
-      if (scrollViewport) {
-        scrollViewport.scrollTop = scrollViewport.scrollHeight
-      }
-    }
-  }, [messages])
+function MessageRow({ message, projectId }: MessageRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null)
+
+  if (!message) {
+    return null
+  }
+
+  return (
+    <div ref={rowRef} className="px-6 py-2" id={`message-${message._id}`}>
+      <MessageItem message={message} projectId={projectId} />
+    </div>
+  )
+}
+
+export function MessageList({
+  messages,
+  projectId,
+  status,
+  loadMore,
+  isLoading,
+}: MessageListProps) {
+  // Always scroll to the bottom when new messages arrive
+  const scrollRef = useScroll("smooth", "end", [messages])
 
   if (messages.length === 0) {
     return (
@@ -63,17 +82,30 @@ export function MessageList({ messages, projectId }: MessageListProps) {
   }
 
   return (
-    <ScrollArea
-      ref={scrollRef}
-      className="max-h-[calc(100dvh-250px)] flex-1 space-y-4 p-6"
-    >
-      {messages.map((message) => (
-        <MessageItem
-          key={message._id}
-          message={message}
-          projectId={projectId}
-        />
-      ))}
-    </ScrollArea>
+    <div className="relative h-[calc(100dvh-250px)] flex-1 space-y-4 overflow-y-auto p-6">
+      <div className="flex min-h-full flex-col-reverse" ref={scrollRef}>
+        {messages.map((message) => (
+          <MessageRow
+            key={message._id}
+            message={message}
+            projectId={projectId}
+          />
+        ))}
+
+        {!isLoading && status == "CanLoadMore" && (
+          <div className="flex items-center justify-center gap-x-2 p-2">
+            <Button variant="ghost" onClick={loadMore.bind(null, 10)}>
+              Load More
+            </Button>
+          </div>
+        )}
+
+        {!isLoading && status == "Exhausted" && messages.length != 0 && (
+          <div className="flex items-center justify-center gap-x-2 p-2 text-muted-foreground">
+            <p>No more messages</p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

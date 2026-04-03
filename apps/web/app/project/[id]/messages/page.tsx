@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useQuery, useMutation } from "convex/react"
+import { useMutation, usePaginatedQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { type Id } from "@/convex/_generated/dataModel"
 import { MessageList } from "./components/message-list"
@@ -14,19 +14,28 @@ import { useParams } from "next/navigation"
 export default function MessagesPage() {
   const { id } = useParams<{ id: Id<"projects"> }>()
 
-  const messages = useQuery(api.messages.list, { projectId: id })
+  const {
+    results: messages,
+    status,
+    isLoading,
+    loadMore,
+  } = usePaginatedQuery(
+    api.messages.list,
+    { projectId: id },
+    { initialNumItems: 10 }
+  )
   const markAsRead = useMutation(api.messages.markAsRead)
 
   // Mark messages as read when page loads or new messages arrive
   useEffect(() => {
-    if (messages && messages.length > 0) {
+    if (messages.length > 0) {
       markAsRead({ projectId: id }).catch((error) => {
         console.error("Failed to mark messages as read:", error)
       })
     }
   }, [messages, id, markAsRead])
 
-  if (messages === undefined) {
+  if (status === "LoadingFirstPage" && messages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -35,8 +44,8 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b px-6 py-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="sticky top-0 z-20 shrink-0 border-b bg-background/95 px-6 py-4 backdrop-blur">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Messages</h1>
@@ -48,11 +57,20 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      <MessageList messages={messages} projectId={id} />
+      <div className="min-h-0 flex-1">
+        <MessageList
+          messages={messages}
+          projectId={id}
+          status={status}
+          isLoading={isLoading}
+          loadMore={loadMore}
+        />
+      </div>
 
-      <TypingIndicator projectId={id} />
-
-      <MessageInput projectId={id} />
+      <div className="z-20 shrink-0 bg-background/95 backdrop-blur">
+        <TypingIndicator projectId={id} />
+        <MessageInput projectId={id} />
+      </div>
     </div>
   )
 }

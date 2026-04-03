@@ -226,7 +226,7 @@ export function MessageItem({
                     : "bg-muted"
                 }`}
               >
-                <p className="text-sm wrap-break-word whitespace-pre-wrap">
+                <div className="text-sm wrap-break-word whitespace-pre-wrap">
                   {message.content.split(/(@\w+(?:\s+\w+)?)/g).map((part, index) => {
                     if (part.startsWith("@")) {
                       return (
@@ -245,7 +245,7 @@ export function MessageItem({
                     }
                     return part
                   })}
-                </p>
+                </div>
               </div>
               
               {/* Attachments */}

@@ -194,9 +194,11 @@ const schema = defineSchema({
       v.literal("task_assigned"),
       v.literal("task_unassigned"),
       v.literal("task_status_changed"),
-      v.literal("task_due_soon")
+      v.literal("task_due_soon"),
+      v.literal("message_mentioned")
     ),
     taskId: v.optional(v.id("tasks")), // Related task (if applicable)
+    messageId: v.optional(v.id("messages")), // Related message (if applicable)
     projectId: v.id("projects"), // Related project
     triggeredBy: v.id("users"), // Who triggered this notification
     isRead: v.boolean(),
@@ -205,6 +207,7 @@ const schema = defineSchema({
         taskTitle: v.optional(v.string()),
         oldStatus: v.optional(v.string()),
         newStatus: v.optional(v.string()),
+        messagePreview: v.optional(v.string()),
       })
     ),
     createdAt: v.number(),

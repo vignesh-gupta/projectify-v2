@@ -1,7 +1,63 @@
+import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, type MutationCtx } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import { Id } from "./_generated/dataModel"
+import { Doc, Id } from "./_generated/dataModel"
+import { internal } from "./_generated/api"
+
+const MENTION_PATTERN = /@(\w+(?:\s+\w+)?)/g
+
+type MentionableMember = Pick<Doc<"users">, "_id" | "name" | "email">
+
+function extractMentionedUserIds(
+  members: MentionableMember[],
+  content: string
+) {
+  const normalizedMembers = members.map((member) => ({
+    userId: member._id,
+    name: member.name?.trim().toLowerCase(),
+    email: member.email?.trim().toLowerCase() ?? "",
+  }))
+
+  const mentionedUserIds = new Set<Id<"users">>()
+
+  for (const match of content.matchAll(MENTION_PATTERN)) {
+    const rawMention = match[1]?.trim().toLowerCase()
+    if (!rawMention) {
+      continue
+    }
+
+    const matchedMember = normalizedMembers.find(
+      (member) => member.name === rawMention || member.email === rawMention
+    )
+
+    if (matchedMember) {
+      mentionedUserIds.add(matchedMember.userId)
+    }
+  }
+
+  return [...mentionedUserIds]
+}
+
+function getMessagePreview(content: string) {
+  return content.trim().slice(0, 120)
+}
+
+async function getMentionableMembers(
+  ctx: MutationCtx,
+  projectId: Id<"projects">
+): Promise<MentionableMember[]> {
+  const memberships = await ctx.db
+    .query("memberships")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect()
+
+  const members = await Promise.all(
+    memberships.map(async (membership) => await ctx.db.get(membership.userId))
+  )
+
+  return members.filter((member): member is Doc<"users"> => member !== null)
+}
 
 // Generate upload URL for file attachments
 export const generateUploadUrl = mutation({
@@ -128,6 +184,29 @@ export const send = mutation({
       createdAt: Date.now(),
     })
 
+    const mentionableMembers = await getMentionableMembers(ctx, args.projectId)
+    const mentionedUserIds = extractMentionedUserIds(
+      mentionableMembers,
+      args.content
+    )
+
+    await Promise.all(
+      mentionedUserIds
+        .filter((mentionedUserId) => mentionedUserId !== userId)
+        .map((mentionedUserId) =>
+          ctx.scheduler.runAfter(0, internal.notifications.createInternal, {
+            userId: mentionedUserId,
+            type: "message_mentioned",
+            messageId,
+            projectId: args.projectId,
+            triggeredBy: userId,
+            metadata: {
+              messagePreview: getMessagePreview(args.content),
+            },
+          })
+        )
+    )
+
     return messageId
   },
 })
@@ -136,7 +215,7 @@ export const send = mutation({
 export const list = query({
   args: {
     projectId: v.id("projects"),
-    limit: v.optional(v.number()),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -155,18 +234,18 @@ export const list = query({
     if (!membership) {
       throw new Error("Not a member of this project")
     }
-
+    // Order messages by creation time descending, and paginate
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_project_created", (q) => q.eq("projectId", args.projectId))
       .filter((q) => q.eq(q.field("deletedAt"), undefined))
       .filter((q) => q.eq(q.field("threadId"), undefined)) // Only root messages
       .order("desc")
-      .take(args.limit ?? 50)
+      .paginate(args.paginationOpts)
 
     // Get author details for each message
     const messagesWithAuthors = await Promise.all(
-      messages.map(async (message) => {
+      messages.page.map(async (message) => {
         const author = await ctx.db.get(message.authorId)
         return {
           ...message,
@@ -182,7 +261,10 @@ export const list = query({
       })
     )
 
-    return messagesWithAuthors.reverse()
+    return {
+      ...messages,
+      page: messagesWithAuthors,
+    }
   },
 })
 
@@ -268,10 +350,46 @@ export const update = mutation({
       throw new Error("Cannot edit deleted message")
     }
 
+    const mentionableMembers = await getMentionableMembers(
+      ctx,
+      message.projectId
+    )
+    const existingMentionedUserIds = extractMentionedUserIds(
+      mentionableMembers,
+      message.content
+    )
+    const nextMentionedUserIds = extractMentionedUserIds(
+      mentionableMembers,
+      args.content
+    )
+
     await ctx.db.patch(args.messageId, {
       content: args.content,
       updatedAt: Date.now(),
     })
+
+    const existingMentionedUserIdSet = new Set(existingMentionedUserIds)
+
+    await Promise.all(
+      nextMentionedUserIds
+        .filter(
+          (mentionedUserId) =>
+            mentionedUserId !== userId &&
+            !existingMentionedUserIdSet.has(mentionedUserId)
+        )
+        .map((mentionedUserId) =>
+          ctx.scheduler.runAfter(0, internal.notifications.createInternal, {
+            userId: mentionedUserId,
+            type: "message_mentioned",
+            messageId: args.messageId,
+            projectId: message.projectId,
+            triggeredBy: userId,
+            metadata: {
+              messagePreview: getMessagePreview(args.content),
+            },
+          })
+        )
+    )
 
     return args.messageId
   },

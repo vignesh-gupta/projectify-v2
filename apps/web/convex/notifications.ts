@@ -1,50 +1,48 @@
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
 
-/**
- * Create a new notification
- */
-export const create = mutation({
-  args: {
-    userId: v.id("users"),
-    type: v.union(
-      v.literal("task_assigned"),
-      v.literal("task_unassigned"),
-      v.literal("task_status_changed"),
-      v.literal("task_due_soon")
-    ),
-    taskId: v.optional(v.id("tasks")),
-    projectId: v.id("projects"),
-    triggeredBy: v.id("users"),
-    metadata: v.optional(
-      v.object({
-        taskTitle: v.optional(v.string()),
-        oldStatus: v.optional(v.string()),
-        newStatus: v.optional(v.string()),
-      })
-    ),
-  },
+const notificationArgs = {
+  userId: v.id("users"),
+  type: v.union(
+    v.literal("task_assigned"),
+    v.literal("task_unassigned"),
+    v.literal("task_status_changed"),
+    v.literal("task_due_soon"),
+    v.literal("message_mentioned")
+  ),
+  taskId: v.optional(v.id("tasks")),
+  messageId: v.optional(v.id("messages")),
+  projectId: v.id("projects"),
+  triggeredBy: v.id("users"),
+  metadata: v.optional(
+    v.object({
+      taskTitle: v.optional(v.string()),
+      oldStatus: v.optional(v.string()),
+      newStatus: v.optional(v.string()),
+      messagePreview: v.optional(v.string()),
+    })
+  ),
+}
+
+export const createInternal = internalMutation({
+  args: notificationArgs,
   handler: async (ctx, args) => {
-    const now = Date.now()
-
-    // Don't create notification if user is triggering action on themselves
     if (args.userId === args.triggeredBy) {
       return null
     }
 
-    const notificationId = await ctx.db.insert("notifications", {
+    return await ctx.db.insert("notifications", {
       userId: args.userId,
       type: args.type,
       taskId: args.taskId,
+      messageId: args.messageId,
       projectId: args.projectId,
       triggeredBy: args.triggeredBy,
       isRead: false,
       metadata: args.metadata,
-      createdAt: now,
+      createdAt: Date.now(),
     })
-
-    return notificationId
   },
 })
 
@@ -88,6 +86,9 @@ export const list = query({
         const task = notification.taskId
           ? await ctx.db.get(notification.taskId)
           : null
+        const message = notification.messageId
+          ? await ctx.db.get(notification.messageId)
+          : null
         const project = await ctx.db.get(notification.projectId)
 
         return {
@@ -105,6 +106,13 @@ export const list = query({
                 _id: task._id,
                 title: task.title,
                 status: task.status,
+              }
+            : null,
+          message: message
+            ? {
+                _id: message._id,
+                content: message.content,
+                threadId: message.threadId,
               }
             : null,
           project: project

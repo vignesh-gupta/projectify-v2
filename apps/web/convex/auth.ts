@@ -7,6 +7,17 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   session: {
     totalDurationMs: 1000 * 60 * 60 * 24, // 24 hours
   },
+  callbacks: {
+    redirect: async ({ redirectTo }) => {
+      if (redirectTo) {
+        return redirectTo
+      }
+      return "/dashboard"
+    },
+  },
+  theme: {
+    colorScheme: "dark",
+  },
 })
 
 export const currentUser = query({

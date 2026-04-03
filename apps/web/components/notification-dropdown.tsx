@@ -16,9 +16,9 @@ import { useMutation, useQuery } from "convex/react"
 import { formatDistanceToNow } from "date-fns"
 import {
   Bell,
-  BellRing,
   Check,
   CheckCheck,
+  MessageSquare,
   UserMinus,
   UserPlus,
 } from "lucide-react"
@@ -34,6 +34,7 @@ export function NotificationDropdown() {
 
   const handleNotificationClick = async (
     notificationId: Id<"notifications">,
+    type: string,
     taskId: Id<"tasks"> | undefined,
     projectId: Id<"projects">,
     isRead: boolean
@@ -50,6 +51,11 @@ export function NotificationDropdown() {
     // Navigate to task
     if (taskId) {
       router.push(`/project/${projectId}/work-items`)
+      return
+    }
+
+    if (type === "message_mentioned") {
+      router.push(`/project/${projectId}/messages`)
     }
   }
 
@@ -71,6 +77,8 @@ export function NotificationDropdown() {
         return <UserMinus className="size-4 text-orange-500" />
       case "task_status_changed":
         return <Check className="size-4 text-blue-500" />
+      case "message_mentioned":
+        return <MessageSquare className="size-4 text-violet-500" />
       default:
         return <Bell className="size-4 text-muted-foreground" />
     }
@@ -79,7 +87,12 @@ export function NotificationDropdown() {
   const getNotificationMessage = (notification: {
     type: string
     triggeredByUser: { name: string | null; email: string } | null
-    metadata?: { taskTitle?: string }
+    metadata?: {
+      taskTitle?: string
+      oldStatus?: string
+      newStatus?: string
+      messagePreview?: string
+    }
   }) => {
     const userName =
       notification.triggeredByUser?.name ||
@@ -109,6 +122,21 @@ export function NotificationDropdown() {
             of <span className="font-medium">{taskTitle}</span>
           </>
         )
+      case "message_mentioned":
+        return (
+          <>
+            <span className="font-medium">{userName}</span> mentioned you in a
+            message
+            {notification.metadata?.messagePreview ? (
+              <>
+                :{" "}
+                <span className="font-medium">
+                  {notification.metadata.messagePreview}
+                </span>
+              </>
+            ) : null}
+          </>
+        )
       default:
         return "New notification"
     }
@@ -118,7 +146,7 @@ export function NotificationDropdown() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <BellRing className="size-5" />
+          <Bell className="size-5" />
           {unreadCount !== undefined && unreadCount > 0 && (
             <Badge
               variant="destructive"
@@ -146,7 +174,7 @@ export function NotificationDropdown() {
         </div>
         <DropdownMenuSeparator />
         <ScrollArea className="h-96">
-          {notifications === undefined ? (
+          {!notifications ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-sm text-muted-foreground">Loading...</p>
             </div>
@@ -166,6 +194,7 @@ export function NotificationDropdown() {
                   onClick={() =>
                     handleNotificationClick(
                       notification._id,
+                      notification.type,
                       notification.taskId,
                       notification.projectId,
                       notification.isRead

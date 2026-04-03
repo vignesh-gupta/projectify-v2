@@ -18,7 +18,7 @@ export default async function ProjectLayout({
     <SidebarProvider className="items-stretch">
       <ProjectSidebar projectId={id as Id<"projects">} />
       <SidebarInset className="flex flex-col overflow-y-auto bg-sidebar px-1 py-1.5 min-h-full">
-        <div className="flex-1 rounded-[20] bg-background">{children}</div>
+        <div className="flex-1 rounded-[20] bg-background overflow-hidden">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )
