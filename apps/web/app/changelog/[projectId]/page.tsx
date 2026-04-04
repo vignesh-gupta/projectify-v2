@@ -1,8 +1,16 @@
 import type { Id } from "@/convex/_generated/dataModel"
 import { getPublishedChangelog } from "@/lib/changelog-api"
-import { formatChangelogDate } from "@/lib/changelog-presenter"
+import {
+  formatChangelogDate,
+  renderChangelogContent,
+} from "@/lib/changelog-presenter"
 import { Badge } from "@workspace/ui/components/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 import { Rss, Sparkles } from "lucide-react"
 import Link from "next/link"
 
@@ -74,8 +82,10 @@ export default async function PublicChangelogPage({
                   </CardHeader>
                   <CardContent>
                     <article
-                      className="prose prose-sm max-w-none dark:prose-invert"
-                      dangerouslySetInnerHTML={{ __html: entry.content }}
+                      className="prose prose-sm dark:prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html: renderChangelogContent(entry.content),
+                      }}
                     />
                   </CardContent>
                 </Card>

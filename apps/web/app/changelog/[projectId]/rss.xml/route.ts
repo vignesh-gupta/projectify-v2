@@ -1,6 +1,6 @@
 import type { Id } from "@/convex/_generated/dataModel"
 import { getPublishedChangelog } from "@/lib/changelog-api"
-import { escapeXml, stripHtml } from "@/lib/changelog-presenter"
+import { changelogPlainText, escapeXml } from "@/lib/changelog-presenter"
 
 interface RssRouteProps {
   params: Promise<{ projectId: string }>
@@ -20,9 +20,11 @@ export async function GET(_request: Request, { params }: RssRouteProps) {
 
   const items = data.entries
     .map((entry: PublishedEntry) => {
-      const description = escapeXml(stripHtml(entry.content))
+      const description = escapeXml(changelogPlainText(entry.content))
       const title = escapeXml(`v${entry.version} - ${entry.title}`)
-      const pubDate = new Date(entry.publishedAt ?? entry.createdAt).toUTCString()
+      const pubDate = new Date(
+        entry.publishedAt ?? entry.createdAt
+      ).toUTCString()
 
       return `
         <item>

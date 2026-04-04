@@ -7,12 +7,23 @@ import { api } from "@/convex/_generated/api"
 import type { Doc, Id } from "@/convex/_generated/dataModel"
 import {
   formatChangelogDate,
+  isLegacyHtmlContent,
+  renderChangelogContent,
 } from "@/lib/changelog-presenter"
 import { RichTextEditor } from "@/components/rich-text-editor"
-import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@workspace/ui/components/alert"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 import {
   Dialog,
   DialogContent,
@@ -23,6 +34,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import { Textarea } from "@workspace/ui/components/textarea"
 import {
   Sheet,
   SheetContent,
@@ -38,7 +50,15 @@ import {
 } from "@workspace/ui/components/tabs"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { BookOpen, Copy, Globe2, KeyRound, Plus, Rss, Webhook } from "lucide-react"
+import {
+  BookOpen,
+  Copy,
+  Globe2,
+  KeyRound,
+  Plus,
+  Rss,
+  Webhook,
+} from "lucide-react"
 
 type ChangelogEntry = Doc<"changelog"> & {
   author: {
@@ -57,6 +77,8 @@ type SecretState =
   | { type: "apiKey"; value: string }
   | { type: "webhook"; value: string }
   | null
+
+type EditorMode = "markdown" | "legacy-html"
 
 export function ChangelogWorkspace() {
   const params = useParams()
@@ -81,6 +103,7 @@ export function ChangelogWorkspace() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingEntry, setEditingEntry] = useState<ChangelogEntry | null>(null)
+  const [editorMode, setEditorMode] = useState<EditorMode>("markdown")
   const [secretState, setSecretState] = useState<SecretState>(null)
   const [title, setTitle] = useState("")
   const [version, setVersion] = useState("")
@@ -90,17 +113,18 @@ export function ChangelogWorkspace() {
   const [webhookUrl, setWebhookUrl] = useState("")
 
   const project = changelogData?.project
-  const entries: ChangelogEntry[] = (changelogData?.entries ?? []) as ChangelogEntry[]
+  const entries: ChangelogEntry[] = (changelogData?.entries ??
+    []) as ChangelogEntry[]
   const role = changelogData?.role
   const isPrivileged = role === "owner" || role === "admin"
   const apiKeyItems: ApiKeyRecord[] = (apiKeys ?? []) as ApiKeyRecord[]
   const webhookItems: WebhookRecord[] = (webhooks ?? []) as WebhookRecord[]
-  const deliveryItems: WebhookDeliveryRecord[] = (
-    webhookDeliveries ?? []
-  ) as WebhookDeliveryRecord[]
+  const deliveryItems: WebhookDeliveryRecord[] = (webhookDeliveries ??
+    []) as WebhookDeliveryRecord[]
 
   const resetEditor = () => {
     setEditingEntry(null)
+    setEditorMode("markdown")
     setTitle("")
     setVersion("")
     setContent("")
@@ -113,6 +137,9 @@ export function ChangelogWorkspace() {
 
   const openEditDialog = (entry: ChangelogEntry) => {
     setEditingEntry(entry)
+    setEditorMode(
+      isLegacyHtmlContent(entry.content) ? "legacy-html" : "markdown"
+    )
     setTitle(entry.title)
     setVersion(entry.version)
     setContent(entry.content)
@@ -264,7 +291,12 @@ export function ChangelogWorkspace() {
             </p>
             <div className="flex flex-col gap-2 rounded-md border bg-background p-3 font-mono text-xs text-foreground md:flex-row md:items-center md:justify-between">
               <span className="break-all">{secretState.value}</span>
-              <Button type="button" size="sm" variant="outline" onClick={copySecret}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={copySecret}
+              >
                 <Copy className="mr-2 size-4" />
                 Copy
               </Button>
@@ -293,13 +325,22 @@ export function ChangelogWorkspace() {
                   RSS feed
                 </Button>
               </Link>
+              <Link href={`/embed/changelog/${projectId}`} target="_blank">
+                <Button variant="outline" size="sm">
+                  <Globe2 className="mr-2 size-4" />
+                  Widget preview
+                </Button>
+              </Link>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
             Public page:{" "}
-            <Link href={`/changelog/${projectId}`} className="text-foreground underline">
+            <Link
+              href={`/changelog/${projectId}`}
+              className="text-foreground underline"
+            >
               <code>/changelog/{projectId}</code>
             </Link>
           </p>
@@ -310,6 +351,15 @@ export function ChangelogWorkspace() {
               className="text-foreground underline"
             >
               <code>/changelog/{projectId}/rss.xml</code>
+            </Link>
+          </p>
+          <p>
+            Embed widget:{" "}
+            <Link
+              href={`/embed/changelog/${projectId}`}
+              className="text-foreground underline"
+            >
+              <code>/embed/changelog/{projectId}</code>
             </Link>
           </p>
         </CardContent>
@@ -357,7 +407,9 @@ export function ChangelogWorkspace() {
                       <div className="space-y-1">
                         <CardTitle className="text-xl">{entry.title}</CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          {entry.author?.name ?? entry.author?.email ?? "Unknown author"}
+                          {entry.author?.name ??
+                            entry.author?.email ??
+                            "Unknown author"}
                         </p>
                       </div>
                       {isPrivileged && entry.status === "draft" && (
@@ -369,7 +421,10 @@ export function ChangelogWorkspace() {
                           >
                             Edit
                           </Button>
-                          <Button size="sm" onClick={() => handlePublish(entry._id)}>
+                          <Button
+                            size="sm"
+                            onClick={() => handlePublish(entry._id)}
+                          >
                             Publish
                           </Button>
                         </div>
@@ -378,8 +433,10 @@ export function ChangelogWorkspace() {
                   </CardHeader>
                   <CardContent>
                     <article
-                      className="prose prose-sm max-w-none dark:prose-invert"
-                      dangerouslySetInnerHTML={{ __html: entry.content }}
+                      className="prose prose-sm dark:prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html: renderChangelogContent(entry.content),
+                      }}
                     />
                   </CardContent>
                 </Card>
@@ -398,11 +455,17 @@ export function ChangelogWorkspace() {
                 Product docs endpoint: <code>/api/changelog-integrations</code>
               </p>
               <p>
-                Authenticated list endpoint: <code>/api/changelog/{projectId}</code>
+                Authenticated list endpoint:{" "}
+                <code>/api/changelog/{projectId}</code>
               </p>
               <p>
                 Authenticated detail endpoint:{" "}
-                <code>/api/changelog/{projectId}/{"{changelogId}"}</code>
+                <code>
+                  /api/changelog/{projectId}/{"{changelogId}"}
+                </code>
+              </p>
+              <p>
+                Embed widget page: <code>/embed/changelog/{projectId}</code>
               </p>
             </CardContent>
           </Card>
@@ -524,7 +587,8 @@ export function ChangelogWorkspace() {
                         <Badge variant="outline">{item.status}</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Last delivery: {formatChangelogDate(item.lastDeliveredAt)}
+                        Last delivery:{" "}
+                        {formatChangelogDate(item.lastDeliveredAt)}
                       </p>
                       {isPrivileged && item.status === "active" && (
                         <Button
@@ -548,7 +612,9 @@ export function ChangelogWorkspace() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Recent webhook deliveries</CardTitle>
+              <CardTitle className="text-base">
+                Recent webhook deliveries
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {deliveryItems.length === 0 ? (
@@ -572,7 +638,9 @@ export function ChangelogWorkspace() {
                         : ""}
                     </p>
                     {delivery.errorMessage && (
-                      <p className="text-destructive">{delivery.errorMessage}</p>
+                      <p className="text-destructive">
+                        {delivery.errorMessage}
+                      </p>
                     )}
                   </div>
                 ))
@@ -595,11 +663,13 @@ export function ChangelogWorkspace() {
           <form onSubmit={handleSaveDraft}>
             <DialogHeader>
               <DialogTitle>
-                {editingEntry ? "Edit changelog draft" : "Create changelog draft"}
+                {editingEntry
+                  ? "Edit changelog draft"
+                  : "Create changelog draft"}
               </DialogTitle>
               <DialogDescription>
-                Publish polished release notes for customers and keep your public
-                changelog current.
+                Publish polished release notes for customers and keep your
+                public changelog current.
               </DialogDescription>
             </DialogHeader>
 
@@ -632,11 +702,60 @@ export function ChangelogWorkspace() {
 
               <div className="space-y-2">
                 <Label>Details</Label>
-                <RichTextEditor
-                  content={content}
-                  onChange={setContent}
-                  placeholder="Summarize what changed, who benefits, and any caveats."
-                />
+                {editorMode === "legacy-html" ? (
+                  <div className="space-y-3">
+                    <Alert>
+                      <AlertTitle>Legacy HTML entry</AlertTitle>
+                      <AlertDescription>
+                        This draft was created with the old rich text editor, so
+                        it stays in HTML mode to avoid breaking its formatting.
+                      </AlertDescription>
+                    </Alert>
+                    <RichTextEditor
+                      content={content}
+                      onChange={setContent}
+                      placeholder="Summarize what changed, who benefits, and any caveats."
+                    />
+                  </div>
+                ) : (
+                  <Tabs defaultValue="write" className="gap-3">
+                    <TabsList>
+                      <TabsTrigger value="write">Write</TabsTrigger>
+                      <TabsTrigger value="preview">Preview</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="write" className="space-y-3">
+                      <Textarea
+                        value={content}
+                        onChange={(event) => setContent(event.target.value)}
+                        placeholder={`## Highlights
+
+- Added something customers will notice
+- Fixed a bug worth calling out
+- Mention any rollout notes or caveats`}
+                        className="min-h-72 font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Markdown is now the default format for new changelog
+                        drafts.
+                      </p>
+                    </TabsContent>
+                    <TabsContent value="preview">
+                      <div className="prose prose-sm dark:prose-invert min-h-72 max-w-none rounded-md border p-4">
+                        {content.trim() ? (
+                          <div
+                            dangerouslySetInnerHTML={{
+                              __html: renderChangelogContent(content),
+                            }}
+                          />
+                        ) : (
+                          <p className="text-muted-foreground">
+                            Nothing to preview yet.
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
               </div>
             </div>
 
@@ -650,7 +769,11 @@ export function ChangelogWorkspace() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : editingEntry ? "Save Draft" : "Create Draft"}
+                {isSubmitting
+                  ? "Saving..."
+                  : editingEntry
+                    ? "Save Draft"
+                    : "Create Draft"}
               </Button>
             </DialogFooter>
           </form>
@@ -675,15 +798,42 @@ export function ChangelogWorkspace() {
               <CardContent className="space-y-3 text-muted-foreground">
                 <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
                   {`GET /changelog/${projectId}
-GET /changelog/${projectId}/rss.xml`}
+GET /changelog/${projectId}/rss.xml
+GET /embed/changelog/${projectId}`}
                 </pre>
                 <p>
                   The public page and RSS feed only include entries that have
                   been published.
                 </p>
                 <p>
+                  The embed route is a compact, public-facing widget that can be
+                  placed inside an iframe on another site.
+                </p>
+                <p>
                   Each entry can describe mixed additions, fixes, and changes in
                   the body, so there is no single release category field.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Embed snippet</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-muted-foreground">
+                <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
+                  {`<iframe
+  src="${typeof window === "undefined" ? "" : window.location.origin}/embed/changelog/${projectId}"
+  title="${project.title} changelog"
+  width="100%"
+  height="520"
+  style="border:0;border-radius:16px;overflow:hidden"
+  loading="lazy"
+></iframe>`}
+                </pre>
+                <p>
+                  You can append <code>?limit=3</code> or{" "}
+                  <code>&theme=dark</code> to tailor the embedded view.
                 </p>
               </CardContent>
             </Card>
@@ -702,8 +852,8 @@ Authorization: Bearer <api_key>`}
                 </pre>
                 <p>
                   You can also send the key with the <code>x-api-key</code>{" "}
-                  header. Only the <code>read:changelog</code> scope is supported
-                  in this phase.
+                  header. Only the <code>read:changelog</code> scope is
+                  supported in this phase.
                 </p>
               </CardContent>
             </Card>
@@ -727,7 +877,8 @@ Authorization: Bearer <api_key>`}
     "_id": "entryId",
     "version": "1.2.3",
     "title": "Release title",
-    "content": "<p>HTML body</p>",
+    "content": "## Markdown source",
+    "contentHtml": "<h2>Markdown source</h2>",
     "status": "published",
     "publishedAt": 1775300000000
   }

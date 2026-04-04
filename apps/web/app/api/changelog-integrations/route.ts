@@ -15,6 +15,11 @@ export async function GET() {
         path: "/api/changelog/{projectId}/{changelogId}",
         description: "Fetch a single published changelog entry.",
       },
+      {
+        method: "GET",
+        path: "/embed/changelog/{projectId}",
+        description: "Render a compact embeddable changelog widget.",
+      },
     ],
     webhooks: {
       event: "changelog.published",

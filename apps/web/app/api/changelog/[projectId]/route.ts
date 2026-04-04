@@ -4,6 +4,7 @@ import {
   authenticateChangelogApiKey,
   getPublishedChangelog,
 } from "@/lib/changelog-api"
+import { renderChangelogContent } from "@/lib/changelog-presenter"
 
 function extractApiKey(request: NextRequest) {
   const bearer = request.headers.get("authorization")
@@ -37,7 +38,10 @@ export async function GET(
     return NextResponse.json({
       success: true,
       project: data.project,
-      entries: data.entries,
+      entries: data.entries.map((entry) => ({
+        ...entry,
+        contentHtml: renderChangelogContent(entry.content),
+      })),
     })
   } catch (error) {
     const message =
@@ -45,9 +49,6 @@ export async function GET(
         ? error.message
         : "Failed to fetch changelog entries."
 
-    return NextResponse.json(
-      { success: false, message },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, message }, { status: 500 })
   }
 }

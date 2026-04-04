@@ -1,5 +1,6 @@
 "use node"
 
+import { renderChangelogContent } from "../lib/changelog-presenter"
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
 import { internalAction } from "./_generated/server"
@@ -11,9 +12,12 @@ export const deliverPublishedWebhook = internalAction({
   handler: async (ctx, args) => {
     const { createHmac } = await import("node:crypto")
 
-    const payload = await ctx.runQuery(internal.changelog.getPublishedWebhookPayload, {
-      changelogId: args.changelogId,
-    })
+    const payload = await ctx.runQuery(
+      internal.changelog.getPublishedWebhookPayload,
+      {
+        changelogId: args.changelogId,
+      }
+    )
 
     if (!payload) {
       return
@@ -24,7 +28,10 @@ export const deliverPublishedWebhook = internalAction({
         event: "changelog.published",
         createdAt: new Date().toISOString(),
         project: payload.project,
-        changelog: payload.changelog,
+        changelog: {
+          ...payload.changelog,
+          contentHtml: renderChangelogContent(payload.changelog.content),
+        },
       })
 
       const signature = createHmac("sha256", webhook.signingSecret)
