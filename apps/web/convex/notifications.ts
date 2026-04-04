@@ -9,7 +9,10 @@ const notificationArgs = {
     v.literal("task_unassigned"),
     v.literal("task_status_changed"),
     v.literal("task_due_soon"),
-    v.literal("message_mentioned")
+    v.literal("message_mentioned"),
+    v.literal("task_comment"),
+    v.literal("comment_mention"),
+    v.literal("comment_reply")
   ),
   taskId: v.optional(v.id("tasks")),
   messageId: v.optional(v.id("messages")),
@@ -23,6 +26,7 @@ const notificationArgs = {
       oldStatus: v.optional(v.string()),
       newStatus: v.optional(v.string()),
       messagePreview: v.optional(v.string()),
+      commentPreview: v.optional(v.string()),
     })
   ),
 }

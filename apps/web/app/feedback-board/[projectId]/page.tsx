@@ -1,17 +1,18 @@
 "use client"
 
-import { useState } from "react"
-import { useParams } from "next/navigation"
-import { Globe2 } from "lucide-react"
-import { Id } from "@/convex/_generated/dataModel"
 import { FeedbackBoard } from "@/app/project/[id]/feedbacks/components/feedback-board"
+import { PublicFeedbackSubmitDialog } from "@/app/project/[id]/feedbacks/components/public-feedback-submit-dialog"
+import { Id } from "@/convex/_generated/dataModel"
+import { Badge } from "@workspace/ui/components/badge"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
-import { Badge } from "@workspace/ui/components/badge"
+import { Globe2 } from "lucide-react"
+import { useParams } from "next/navigation"
+import { useState } from "react"
 
 const STORAGE_KEY_PREFIX = "projectify-feedback-anon:"
 
@@ -51,7 +52,7 @@ export default function PublicFeedbackBoardPage() {
     <main className="min-h-screen bg-muted/30 px-4 py-10 md:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <div className="space-y-3">
-          <Badge variant="outline" className="px-4 py-1.5 gap-1 text-sm">
+          <Badge variant="outline" className="gap-1 px-4 py-1.5 text-sm">
             <Globe2 className="size-4" />
             Public feedback board
           </Badge>
@@ -66,6 +67,13 @@ export default function PublicFeedbackBoardPage() {
           </div>
         </div>
 
+        <div className="flex justify-start">
+          <PublicFeedbackSubmitDialog
+            projectId={projectId}
+            anonymousId={anonymousId}
+          />
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">How this board works</CardTitle>
@@ -76,8 +84,9 @@ export default function PublicFeedbackBoardPage() {
               high-signal ideas rise to the top.
             </p>
             <p>
-              Public submissions are not enabled in this pass yet, so this page
-              is currently view-and-vote.
+              Public submissions are enabled. You can also automate external
+              submissions against the project API once integrations are turned
+              on.
             </p>
           </CardContent>
         </Card>

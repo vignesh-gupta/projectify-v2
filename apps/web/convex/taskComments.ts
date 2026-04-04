@@ -3,6 +3,35 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
 
+type StoredReaction = {
+  emoji: string
+  userIds: Id<"users">[]
+}
+
+const normalizeReactions = (
+  reactions: StoredReaction[] | Record<string, Id<"users">[]> | undefined
+): Record<string, Id<"users">[]> => {
+  if (!reactions) {
+    return {}
+  }
+
+  if (Array.isArray(reactions)) {
+    return Object.fromEntries(
+      reactions.map((reaction) => [reaction.emoji, reaction.userIds])
+    )
+  }
+
+  return reactions
+}
+
+const serializeReactions = (
+  reactions: Record<string, Id<"users">[]>
+): StoredReaction[] =>
+  Object.entries(reactions).map(([emoji, userIds]) => ({
+    emoji,
+    userIds,
+  }))
+
 /**
  * Create a new comment on a task
  */
@@ -57,7 +86,7 @@ export const create = mutation({
       threadId: args.threadId,
       mentions: args.mentions,
       attachments: args.attachments,
-      reactions: {},
+      reactions: [],
       createdAt: now,
     })
 
@@ -189,12 +218,24 @@ export const listByTask = query({
         .filter((r) => r.threadId === comment._id)
         .map((reply) => ({
           ...reply,
+          reactions: normalizeReactions(
+            reply.reactions as
+              | StoredReaction[]
+              | Record<string, Id<"users">[]>
+              | undefined
+          ),
           author: authorMap.get(reply.authorId) || null,
         }))
         .sort((a, b) => a.createdAt - b.createdAt)
 
       return {
         ...comment,
+        reactions: normalizeReactions(
+          comment.reactions as
+            | StoredReaction[]
+            | Record<string, Id<"users">[]>
+            | undefined
+        ),
         author: authorMap.get(comment.authorId) || null,
         replies: commentReplies,
       }
@@ -325,8 +366,13 @@ export const toggleReaction = mutation({
       throw new Error("Not a member of this project")
     }
 
-    const reactions: Record<string, string[]> = (comment.reactions || {}) as Record<string, string[]>
-    const emojiReactions = reactions[args.emoji] || []
+    const existingReactions = normalizeReactions(
+      comment.reactions as
+        | StoredReaction[]
+        | Record<string, Id<"users">[]>
+        | undefined
+    )
+    const emojiReactions = existingReactions[args.emoji] || []
 
     // Toggle: add or remove user's reaction
     const userReacted = emojiReactions.includes(userId)
@@ -335,14 +381,20 @@ export const toggleReaction = mutation({
       : [...emojiReactions, userId]
 
     // Update or remove the emoji key
-    const newReactions = { ...reactions }
+    const newReactions = { ...existingReactions }
     if (updatedReactions.length === 0) {
       delete newReactions[args.emoji]
     } else {
       newReactions[args.emoji] = updatedReactions
     }
 
-    await ctx.db.patch(args.commentId, { reactions: newReactions })
+    const reactions = serializeReactions(newReactions)
+
+    console.log({ reactions })
+
+    await ctx.db.patch(args.commentId, {
+      reactions,
+    })
   },
 })
 
@@ -414,6 +466,12 @@ export const listByThread = query({
     return replies
       .map((reply) => ({
         ...reply,
+        reactions: normalizeReactions(
+          reply.reactions as
+            | StoredReaction[]
+            | Record<string, Id<"users">[]>
+            | undefined
+        ),
         author: authorMap.get(reply.authorId) || null,
       }))
       .sort((a, b) => a.createdAt - b.createdAt)

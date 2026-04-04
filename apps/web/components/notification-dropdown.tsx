@@ -3,7 +3,7 @@
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
+import { Button, buttonVariants } from "@workspace/ui/components/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +18,9 @@ import {
   Bell,
   Check,
   CheckCheck,
+  MessageCircleReply,
   MessageSquare,
+  MessageSquareText,
   UserMinus,
   UserPlus,
 } from "lucide-react"
@@ -54,7 +56,12 @@ export function NotificationDropdown() {
       return
     }
 
-    if (type === "message_mentioned") {
+    if (
+      type === "message_mentioned" ||
+      type === "comment_mention" ||
+      type === "comment_reply" ||
+      type === "task_comment"
+    ) {
       router.push(`/project/${projectId}/messages`)
     }
   }
@@ -79,6 +86,12 @@ export function NotificationDropdown() {
         return <Check className="size-4 text-blue-500" />
       case "message_mentioned":
         return <MessageSquare className="size-4 text-violet-500" />
+      case "task_comment":
+        return <MessageSquareText className="size-4 text-sky-500" />
+      case "comment_mention":
+        return <MessageSquareText className="size-4 text-fuchsia-500" />
+      case "comment_reply":
+        return <MessageCircleReply className="size-4 text-amber-500" />
       default:
         return <Bell className="size-4 text-muted-foreground" />
     }
@@ -92,6 +105,7 @@ export function NotificationDropdown() {
       oldStatus?: string
       newStatus?: string
       messagePreview?: string
+      commentPreview?: string
     }
   }) => {
     const userName =
@@ -137,6 +151,27 @@ export function NotificationDropdown() {
             ) : null}
           </>
         )
+      case "task_comment":
+        return (
+          <>
+            <span className="font-medium">{userName}</span> commented on{" "}
+            <span className="font-medium">{taskTitle}</span>
+          </>
+        )
+      case "comment_mention":
+        return (
+          <>
+            <span className="font-medium">{userName}</span> mentioned you in a
+            comment on <span className="font-medium">{taskTitle}</span>
+          </>
+        )
+      case "comment_reply":
+        return (
+          <>
+            <span className="font-medium">{userName}</span> replied to your
+            comment on <span className="font-medium">{taskTitle}</span>
+          </>
+        )
       default:
         return "New notification"
     }
@@ -144,18 +179,22 @@ export function NotificationDropdown() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="size-5" />
-          {unreadCount !== undefined && unreadCount > 0 && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs"
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Badge>
-          )}
-        </Button>
+      <DropdownMenuTrigger
+        className={buttonVariants({
+          variant: "ghost",
+          size: "icon-sm",
+          className: "relative",
+        })}
+      >
+        <Bell className="size-5" />
+        {unreadCount !== undefined && unreadCount > 0 && (
+          <Badge
+            variant="destructive"
+            className="absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs"
+          >
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </Badge>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="right" className="w-96">
         <div className="flex items-center justify-between px-4 py-2">

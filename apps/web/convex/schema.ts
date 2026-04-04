@@ -85,7 +85,11 @@ const schema = defineSchema({
     ),
     votes: v.number(),
     isPublic: v.boolean(),
-    createdBy: v.id("users"),
+    createdBy: v.optional(v.id("users")),
+    submitterName: v.optional(v.string()),
+    submitterEmail: v.optional(v.string()),
+    anonymousId: v.optional(v.string()),
+    linkedTaskId: v.optional(v.id("tasks")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -93,7 +97,8 @@ const schema = defineSchema({
     .index("by_project_status", ["projectId", "status"])
     .index("by_project_category", ["projectId", "category"])
     .index("by_project_public", ["projectId", "isPublic"])
-    .index("by_project_created_at", ["projectId", "createdAt"]),
+    .index("by_project_created_at", ["projectId", "createdAt"])
+    .index("by_linked_task", ["linkedTaskId"]),
 
   feedbackVotes: defineTable({
     feedbackId: v.id("feedback"),
@@ -216,7 +221,14 @@ const schema = defineSchema({
         })
       )
     ),
-    reactions: v.optional(v.object({})), // emoji: userId[]
+    reactions: v.optional(
+      v.array(
+        v.object({
+          emoji: v.string(),
+          userIds: v.array(v.id("users")),
+        })
+      )
+    ),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     deletedAt: v.optional(v.number()),
@@ -252,6 +264,7 @@ const schema = defineSchema({
         oldStatus: v.optional(v.string()),
         newStatus: v.optional(v.string()),
         messagePreview: v.optional(v.string()),
+        commentPreview: v.optional(v.string()),
       })
     ),
     createdAt: v.number(),

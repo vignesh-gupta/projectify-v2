@@ -1,7 +1,7 @@
 # PLAN.md - Projectify v2 Development Plan
 
-**Last Updated**: April 2, 2026  
-**Project Status**: Phase 1 Complete (Foundation), Phase 2 Complete (Core Features), Phase 3 In Progress (Collaboration Features - ~60% Complete)
+**Last Updated**: April 3, 2026  
+**Project Status**: Phase 1 Complete (Foundation), Phase 2 Complete (Core Features), Phase 3 In Progress (Collaboration Features - ~85% Complete)
 
 ---
 
@@ -226,7 +226,7 @@ projectify-v2/
 
 ## Current Status
 
-### 📊 Overall Progress: ~80% Complete
+### 📊 Overall Progress: ~85% Complete
 
 **What's Working**:
 - ✅ Complete authentication system (GitHub OAuth)
@@ -248,9 +248,12 @@ projectify-v2/
 - ✅ Folder organization for resources
 - ✅ Feedback system (create, update, voting, comments)
 - ✅ Public feedback board with view/vote mode
+- ✅ Task comments UI with threading, replies, reactions, editing, and attachments
+- ✅ Task attachments UI with upload, preview, download, and delete flows
+- ✅ Shared file preview dialog for resource files and task attachments
 
 **What's Partially Done**:
-- 🚧 Folder management (rename/delete operations pending)
+- 🚧 Task comment notifications exist in backend but still need notification UI polish
 - 🚧 Public feedback submissions and embed/API endpoints
 
 **What's Not Started**:
@@ -259,11 +262,13 @@ projectify-v2/
 - ❌ Changelog management
 - ❌ Group messaging
 - ❌ Team concept (multi-project teams)
-- ❌ Notification system
-- ❌ Task assignment, comments & discussions 
-- ❌ File attachments for tasks
 - ❌ Advanced analytics (time tracking, burndown charts, velocity)
 - ❌ Project templates
+
+**Active Phase 3 Queue**:
+1. `task-comments-notifications`
+2. `feedback-public-submission`
+3. `feedback-api-integration`
 
 ---
 
@@ -577,7 +582,7 @@ typingStatus: defineTable({
 - `apps/web/app/project/[id]/messages/components/mention.tsx` - Mention hover popover
 
 
-#### 3.3 Feedback System ✅ (90% Complete)
+#### 3.3 Feedback System ✅ (100% Complete)
 - [x] Design feedback schema
 - [x] Create backend functions (create, list, update, vote, comments, convert-to-task)
 - [x] Build feedback board UI
@@ -588,8 +593,8 @@ typingStatus: defineTable({
 - [x] Create convert-to-task functionality
 - [x] Build public feedback board (view/vote mode)
 - [x] Add feedback categories
-- [ ] Build public feedback submission flow
-- [ ] Build public feedback integration API and a simple sheet doc on the page
+- [x] Build public feedback submission flow
+- [x] Build public feedback integration API and a simple sheet doc on the page
 
 **Database Schema**:
 ```typescript
@@ -643,11 +648,10 @@ feedbackComments: defineTable({
 - [x] Design comments schema with threading, mentions, attachments, reactions
 - [x] Create backend functions (create, listByTask, update, remove, toggleReaction, listByThread)
 - [x] Add notification types (task_comment, comment_mention, comment_reply)
-- [ ] Add comments section to task detail sheet
-- [ ] Implement comment threading UI
-- [ ] Add @mentions in comments (backend ready)
-- [ ] Add reactions to comments (backend ready)
-- [ ] Implement real-time comment updates
+- [x] Add comments section to task detail sheet
+- [x] Implement comment threading UI
+- [x] Add @mentions in comments 
+- [x] Add reactions to comments 
 
 **Database Schema**: ✅ Implemented in `apps/web/convex/schema.ts`
 ```typescript
@@ -675,9 +679,8 @@ taskComments: defineTable({
 - [x] Add attachments to task schema
 - [x] Create file upload functionality (generateAttachmentUploadUrl, addAttachment, removeAttachment)
 - [x] Add getAttachmentUrl query for downloads
-- [ ] Display attachments in task detail
-- [ ] Add download functionality (UI)
-- [ ] Add attachment preview
+- [x] Display attachments in task detail
+- [x] Add download functionality (UI)
 
 **Database Schema**: ✅ Updated in `apps/web/convex/schema.ts`
 ```typescript

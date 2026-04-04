@@ -24,7 +24,11 @@ import { toast } from "sonner"
 import { TaskCommentInput } from "./task-comment-input"
 import { TaskCommentThread } from "./task-comment-thread"
 
-export type TaskCommentWithReplies = Doc<"taskComments"> & {
+type BaseTaskComment = Omit<Doc<"taskComments">, "reactions"> & {
+  reactions?: Record<string, Id<"users">[]>
+}
+
+export type TaskCommentWithReplies = BaseTaskComment & {
   author: {
     _id: Id<"users">
     name?: string | null
@@ -32,7 +36,7 @@ export type TaskCommentWithReplies = Doc<"taskComments"> & {
     image?: string
   } | null
   replies: Array<
-    Doc<"taskComments"> & {
+    BaseTaskComment & {
       author: {
         _id: Id<"users">
         name?: string | null

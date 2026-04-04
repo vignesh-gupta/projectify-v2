@@ -9,10 +9,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   },
   callbacks: {
     redirect: async ({ redirectTo }) => {
-      if (redirectTo) {
-        return redirectTo
-      }
-      return "/dashboard"
+      console.log({
+        redirectTo,
+      })
+
+      return redirectTo ?? "/dashboard"
     },
   },
   theme: {

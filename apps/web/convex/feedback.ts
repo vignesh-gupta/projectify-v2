@@ -58,12 +58,14 @@ async function getFeedbackWithMembershipCheck(
 
 async function attachAuthorDataToFeedbackList<
   T extends {
-    createdBy: Id<"users">
+    createdBy?: Id<"users">
   },
 >(ctx: QueryCtx, feedbackItems: T[]) {
   return await Promise.all(
     feedbackItems.map(async (feedback) => {
-      const author = await ctx.db.get(feedback.createdBy)
+      const author = feedback.createdBy
+        ? await ctx.db.get(feedback.createdBy)
+        : null
       return {
         ...feedback,
         author: author
@@ -115,6 +117,84 @@ export const create = mutation({
       votes: 0,
       isPublic: args.isPublic,
       createdBy: userId,
+      submitterName: undefined,
+      submitterEmail: undefined,
+      anonymousId: undefined,
+      linkedTaskId: undefined,
+      createdAt: now,
+      updatedAt: now,
+    })
+  },
+})
+
+export const createPublic = mutation({
+  args: {
+    projectId: v.id("projects"),
+    title: v.string(),
+    description: v.string(),
+    category: feedbackCategoryValidator,
+    submitterName: v.optional(v.string()),
+    submitterEmail: v.optional(v.string()),
+    anonymousId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId)
+    if (!project) {
+      throw new Error("Project not found")
+    }
+
+    const normalizedTitle = args.title.trim()
+    const normalizedDescription = args.description.trim()
+    const normalizedAnonymousId = args.anonymousId.trim()
+    const normalizedSubmitterName = args.submitterName?.trim() || undefined
+    const normalizedSubmitterEmail = args.submitterEmail?.trim() || undefined
+
+    if (!normalizedTitle) {
+      throw new Error("Title is required")
+    }
+    if (!normalizedDescription) {
+      throw new Error("Description is required")
+    }
+    if (!normalizedAnonymousId) {
+      throw new Error("Anonymous id is required")
+    }
+    if (
+      normalizedSubmitterEmail &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedSubmitterEmail)
+    ) {
+      throw new Error("Submitter email is invalid")
+    }
+
+    const oneHourAgo = Date.now() - 60 * 60 * 1000
+    const recentSubmissions = await ctx.db
+      .query("feedback")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("anonymousId"), normalizedAnonymousId),
+          q.gte(q.field("createdAt"), oneHourAgo)
+        )
+      )
+      .collect()
+
+    if (recentSubmissions.length >= 5) {
+      throw new Error("Submission rate limit reached. Please try again later.")
+    }
+
+    const now = Date.now()
+    return await ctx.db.insert("feedback", {
+      projectId: args.projectId,
+      title: normalizedTitle,
+      description: normalizedDescription,
+      category: args.category,
+      status: "new",
+      votes: 0,
+      isPublic: true,
+      createdBy: undefined,
+      submitterName: normalizedSubmitterName,
+      submitterEmail: normalizedSubmitterEmail,
+      anonymousId: normalizedAnonymousId,
+      linkedTaskId: undefined,
       createdAt: now,
       updatedAt: now,
     })
@@ -348,6 +428,17 @@ export const convertToTask = mutation({
       throw new Error("Only admins or owners can convert feedback to task")
     }
 
+    if (feedback.linkedTaskId) {
+      const existingTask = await ctx.db.get(feedback.linkedTaskId)
+      if (existingTask) {
+        return {
+          taskId: existingTask._id,
+          feedbackId: args.feedbackId,
+          alreadyLinked: true,
+        }
+      }
+    }
+
     const now = Date.now()
     const taskId = await ctx.db.insert("tasks", {
       projectId: feedback.projectId,
@@ -369,12 +460,14 @@ export const convertToTask = mutation({
 
     await ctx.db.patch(args.feedbackId, {
       status: "planned",
+      linkedTaskId: taskId,
       updatedAt: now,
     })
 
     return {
       taskId,
       feedbackId: args.feedbackId,
+      alreadyLinked: false,
     }
   },
 })

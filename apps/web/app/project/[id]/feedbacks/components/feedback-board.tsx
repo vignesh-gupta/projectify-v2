@@ -204,7 +204,6 @@ export function FeedbackBoard({
             <FeedbackCard
               key={feedback._id}
               feedback={feedback}
-              projectId={projectId}
               isPrivileged={isPrivileged}
               publicMode={publicMode}
               anonymousId={anonymousId}

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { MessageSquare, RefreshCw, Sparkles, ThumbsUp } from "lucide-react"
+import { ArrowUpRight, MessageSquare, RefreshCw, Sparkles, ThumbsUp } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/convex/_generated/api"
 import { Doc, Id } from "@/convex/_generated/dataModel"
@@ -33,6 +33,7 @@ import {
   getStatusLabel,
   type FeedbackStatus,
 } from "./feedback-helpers"
+import { useRouter } from "next/navigation"
 
 type FeedbackItem = Doc<"feedback"> & {
   hasVoted: boolean
@@ -46,7 +47,6 @@ type FeedbackItem = Doc<"feedback"> & {
 
 interface FeedbackCardProps {
   feedback: FeedbackItem
-  projectId: Id<"projects">
   isPrivileged: boolean
   publicMode?: boolean
   anonymousId?: string
@@ -54,11 +54,11 @@ interface FeedbackCardProps {
 
 export function FeedbackCard({
   feedback,
-  projectId,
   isPrivileged,
   publicMode = false,
   anonymousId,
 }: FeedbackCardProps) {
+  const router = useRouter()
   const [detailOpen, setDetailOpen] = useState(false)
   const [comment, setComment] = useState("")
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
@@ -76,6 +76,13 @@ export function FeedbackCard({
     api.feedback.listComments,
     detailOpen && !publicMode ? { feedbackId: feedback._id } : "skip"
   )
+
+  const submitterLabel =
+    feedback.author?.name ??
+    feedback.submitterName ??
+    feedback.author?.email ??
+    feedback.submitterEmail ??
+    "Anonymous"
 
   const handleVote = async () => {
     setIsVoteSubmitting(true)
@@ -137,8 +144,10 @@ export function FeedbackCard({
     setIsConvertSubmitting(true)
 
     try {
-      await convertToTask({ feedbackId: feedback._id })
-      toast.success("Feedback converted to task")
+      const result = await convertToTask({ feedbackId: feedback._id })
+      toast.success(
+        result.alreadyLinked ? "Opened existing linked task" : "Feedback converted to task"
+      )
     } catch (error) {
       console.error(error)
       toast.error("Unable to convert feedback to task")
@@ -168,6 +177,11 @@ export function FeedbackCard({
     } finally {
       setIsCommentSubmitting(false)
     }
+  }
+
+  const openLinkedTask = () => {
+    if (!feedback.linkedTaskId) return
+    router.push(`/project/${feedback.projectId}/work-items?taskId=${feedback.linkedTaskId}`)
   }
 
   return (
@@ -213,9 +227,7 @@ export function FeedbackCard({
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Submitted by{" "}
-            {feedback.author?.name ?? feedback.author?.email ?? "Unknown"} on{" "}
-            {formatFeedbackDate(feedback.createdAt)}
+            Submitted by {submitterLabel} on {formatFeedbackDate(feedback.createdAt)}
           </div>
         </CardHeader>
 
@@ -236,6 +248,18 @@ export function FeedbackCard({
               Details
             </Button>
 
+            {feedback.linkedTaskId ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={openLinkedTask}
+              >
+                <ArrowUpRight className="mr-2 h-4 w-4" />
+                Open Task
+              </Button>
+            ) : null}
+
             {isPrivileged && !publicMode ? (
               <Button
                 type="button"
@@ -245,7 +269,7 @@ export function FeedbackCard({
                 disabled={isConvertSubmitting}
               >
                 <Sparkles className="mr-2 h-4 w-4" />
-                Convert to Task
+                {feedback.linkedTaskId ? "Reuse Linked Task" : "Convert to Task"}
               </Button>
             ) : null}
           </div>
@@ -253,7 +277,7 @@ export function FeedbackCard({
       </Card>
 
       <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-        <SheetContent className="sm:max-w-2xl">
+        <SheetContent className="sm:max-w-2xl!">
           <SheetHeader className="pr-12">
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">
@@ -270,9 +294,7 @@ export function FeedbackCard({
             </div>
             <SheetTitle className="text-xl">{feedback.title}</SheetTitle>
             <SheetDescription>
-              Submitted by{" "}
-              {feedback.author?.name ?? feedback.author?.email ?? "Unknown"} on{" "}
-              {formatFeedbackDate(feedback.createdAt)}
+              Submitted by {submitterLabel} on {formatFeedbackDate(feedback.createdAt)}
             </SheetDescription>
           </SheetHeader>
 
@@ -314,6 +336,21 @@ export function FeedbackCard({
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    ) : null}
+
+                    {feedback.linkedTaskId ? (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">Linked work item</div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={openLinkedTask}
+                        >
+                          <ArrowUpRight className="mr-2 h-4 w-4" />
+                          Open linked task
+                        </Button>
                       </div>
                     ) : null}
 
