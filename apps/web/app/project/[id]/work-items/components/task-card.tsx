@@ -135,7 +135,7 @@ export function TaskCard({
                     ) : (
                       <User className="size-3" />
                     )}
-                    <span className="truncate max-w-[100px]">
+                    <span className="truncate max-w-25">
                       {assigneeUser.name || assigneeUser.email}
                     </span>
                   </div>

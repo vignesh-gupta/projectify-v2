@@ -1,26 +1,32 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { useQuery } from "convex/react"
-import { LayoutGrid, Table } from "lucide-react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
-import { TaskKanbanBoard } from "./components/task-kanban-board"
-import { TaskDataTable } from "./components/task-data-table"
-import { createTaskColumns } from "./components/task-columns"
-import { CreateTaskDialog } from "./components/create-task-dialog"
-import { TaskDetailSheet } from "./components/task-detail-sheet"
+import { useTaskId } from "@/hooks/nuqs/use-task-id"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@workspace/ui/components/tabs"
+import { useQuery } from "convex/react"
+import { LayoutGrid, Table } from "lucide-react"
+import { useParams } from "next/navigation"
+import { useMemo, useState } from "react"
+import { CreateTaskDialog } from "./components/create-task-dialog"
+import { createTaskColumns } from "./components/task-columns"
+import { TaskDataTable } from "./components/task-data-table"
+import { TaskDetailSheet } from "./components/task-detail-sheet"
+import { TaskKanbanBoard } from "./components/task-kanban-board"
 
 export default function WorkItemsPage() {
   const params = useParams()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+
+  const [taskId, setTaskId] = useTaskId()
+
   const projectId = params.id as Id<"projects">
-  const selectedTaskId = searchParams.get("taskId") as Id<"tasks"> | null
 
   const tasks = useQuery(api.tasks.listByProject, { projectId })
   const isLoading = tasks === undefined
@@ -29,19 +35,13 @@ export default function WorkItemsPage() {
   const [sheetEditable, setSheetEditable] = useState(false)
 
   const selectedTask = useMemo(
-    () => tasks?.find((task) => task._id === selectedTaskId) ?? null,
-    [selectedTaskId, tasks]
+    () => tasks?.find((task) => task._id === taskId) ?? null,
+    [taskId, tasks]
   )
 
   const handleSheetOpenChange = (open: boolean) => {
     if (open) return
-
-    const nextParams = new URLSearchParams(searchParams.toString())
-    nextParams.delete("taskId")
-    const query = nextParams.toString()
-    router.replace(
-      query ? `/project/${projectId}/work-items?${query}` : `/project/${projectId}/work-items`
-    )
+    setTaskId(null)
   }
 
   return (
@@ -51,7 +51,8 @@ export default function WorkItemsPage() {
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold tracking-tight">Work Items</h1>
             <p className="text-muted-foreground">
-              Easily create and manage work items to keep track of tasks and deliverables.
+              Easily create and manage work items to keep track of tasks and
+              deliverables.
             </p>
           </div>
           <CreateTaskDialog projectId={projectId} />
@@ -85,7 +86,7 @@ export default function WorkItemsPage() {
               </div>
             ) : tasks && tasks.length === 0 ? (
               <Card>
-                <CardContent className="flex h-[400px] items-center justify-center">
+                <CardContent className="flex h-100 items-center justify-center">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <LayoutGrid className="h-12 w-12 text-muted-foreground" />
                     <h3 className="text-lg font-semibold">No tasks yet</h3>
@@ -96,14 +97,18 @@ export default function WorkItemsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <TaskKanbanBoard tasks={tasks || []} projectId={projectId} isLoading={isLoading} />
+              <TaskKanbanBoard
+                tasks={tasks || []}
+                projectId={projectId}
+                isLoading={isLoading}
+              />
             )}
           </TabsContent>
 
           <TabsContent value="table" className="mt-6">
             {tasks && tasks.length === 0 && !isLoading ? (
               <Card>
-                <CardContent className="flex h-[400px] items-center justify-center">
+                <CardContent className="flex h-100 items-center justify-center">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <Table className="h-12 w-12 text-muted-foreground" />
                     <h3 className="text-lg font-semibold">No tasks yet</h3>
@@ -114,7 +119,11 @@ export default function WorkItemsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <TaskDataTable columns={columns} data={tasks || []} isLoading={isLoading} />
+              <TaskDataTable
+                columns={columns}
+                data={tasks || []}
+                isLoading={isLoading}
+              />
             )}
           </TabsContent>
         </Tabs>

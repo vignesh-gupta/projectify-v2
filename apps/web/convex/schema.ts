@@ -151,6 +151,43 @@ const schema = defineSchema({
     .index("by_project", ["projectId"])
     .index("by_project_status", ["projectId", "status"]),
 
+  // User-level API keys for CLI and MCP integrations
+  userApiKeys: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    keyHash: v.string(), // SHA-256 hash of the full key
+    keyPreview: v.string(), // First 7 + last 4 chars for display
+    scopes: v.array(
+      v.union(
+        v.literal("projects:read"),
+        v.literal("projects:write"),
+        v.literal("tasks:read"),
+        v.literal("tasks:write"),
+        v.literal("feedback:read"),
+        v.literal("feedback:write"),
+        v.literal("changelog:read"),
+        v.literal("changelog:write")
+      )
+    ),
+    status: v.union(v.literal("active"), v.literal("revoked")),
+    expiresAt: v.optional(v.number()), // Optional expiration timestamp
+    lastUsedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_expiration", ["expiresAt"]),
+
+  // API key configuration per user
+  apiKeyConfig: defineTable({
+    userId: v.id("users"),
+    maxKeys: v.number(), // Maximum number of keys user can create
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   webhooks: defineTable({
     projectId: v.id("projects"),
     name: v.string(),

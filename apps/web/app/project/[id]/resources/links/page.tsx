@@ -1,21 +1,20 @@
 "use client"
 
-import { useParams, useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
-import { Search } from "lucide-react"
-import { LinkList } from "../components/link-list"
-import { FolderNav } from "../components/folder-nav"
-import { ResourceSearch } from "../components/resource-search"
 import { Id } from "@/convex/_generated/dataModel"
-import { Button } from "@workspace/ui/components/button"
+import { useFolderId } from "@/hooks/nuqs/use-folder-id"
 import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
+import { Search } from "lucide-react"
+import { useParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { FolderNav } from "../components/folder-nav"
+import { LinkList } from "../components/link-list"
+import { ResourceSearch } from "../components/resource-search"
 
 export default function LinksPage() {
-  const params = useParams()
-  const searchParams = useSearchParams()
-  const projectId = params.id as Id<"projects">
-  const folderId = searchParams.get("folderId") as Id<"folders"> | null
+  const { id: projectId } = useParams<{ id: Id<"projects"> }>()
   const [searchOpen, setSearchOpen] = useState(false)
+  const { folderId } = useFolderId()
 
   // Keyboard shortcut: Cmd/Ctrl + K
   useEffect(() => {
@@ -63,10 +62,7 @@ export default function LinksPage() {
         />
 
         {/* Link List */}
-        <LinkList
-          projectId={projectId}
-          folderId={folderId || undefined}
-        />
+        <LinkList projectId={projectId} folderId={folderId || undefined} />
       </div>
 
       {/* Search Dialog */}

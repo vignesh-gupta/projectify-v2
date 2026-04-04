@@ -1,21 +1,21 @@
 "use client"
 
-import { useParams, useSearchParams } from "next/navigation"
-import { useRef, useState, useEffect } from "react"
+import { Id } from "@/convex/_generated/dataModel"
+import { useFolderId } from "@/hooks/nuqs/use-folder-id"
+import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { Search } from "lucide-react"
-import { FileList, FileListHandle } from "../components/file-list"
+import { useParams } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
 import { DropZoneWrapper } from "../components/drop-zone-wrapper"
+import { FileList, FileListHandle } from "../components/file-list"
 import { FolderNav } from "../components/folder-nav"
 import { ResourceSearch } from "../components/resource-search"
-import { Id } from "@/convex/_generated/dataModel"
-import { Button } from "@workspace/ui/components/button"
-import { Badge } from "@workspace/ui/components/badge"
 
 export default function FilesPage() {
-  const params = useParams()
-  const searchParams = useSearchParams()
-  const projectId = params.id as Id<"projects">
-  const folderId = searchParams.get("folder") as Id<"folders"> | null
+  const { id: projectId } = useParams<{ id: Id<"projects"> }>()
+  const { folderId } = useFolderId()
+
   const fileListRef = useRef<FileListHandle>(null)
   const [searchOpen, setSearchOpen] = useState(false)
 

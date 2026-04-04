@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Id } from "@/convex/_generated/dataModel"
-import {
-  authenticateChangelogApiKey,
-  getPublishedChangelogEntry,
-} from "@/lib/changelog-api"
+import { getPublishedChangelogEntry } from "@/lib/changelog-api"
 import { renderChangelogContent } from "@/lib/changelog-presenter"
-
-function extractApiKey(request: NextRequest) {
-  const bearer = request.headers.get("authorization")
-  if (bearer?.startsWith("Bearer ")) {
-    return bearer.slice("Bearer ".length).trim()
-  }
-
-  return request.headers.get("x-api-key")?.trim() ?? ""
-}
+import {
+  authenticateRequest,
+  createUnauthorizedResponse,
+  createErrorResponse,
+} from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
@@ -21,17 +14,11 @@ export async function GET(
 ) {
   try {
     const { projectId, changelogId } = await context.params
-    const apiKey = extractApiKey(request)
-    const auth = await authenticateChangelogApiKey(
-      projectId as Id<"projects">,
-      apiKey
-    )
 
-    if (!auth || !auth.scopes.includes("read:changelog")) {
-      return NextResponse.json(
-        { success: false, message: "Invalid API key." },
-        { status: 401 }
-      )
+    // Authenticate with user API key (requires changelog:read scope)
+    const auth = await authenticateRequest(request, ["changelog:read"])
+    if (!auth.authenticated) {
+      return createUnauthorizedResponse(auth.error)
     }
 
     const data = await getPublishedChangelogEntry(
@@ -53,6 +40,6 @@ export async function GET(
         ? error.message
         : "Failed to fetch changelog entry."
 
-    return NextResponse.json({ success: false, message }, { status: 500 })
+    return createErrorResponse(message, 500)
   }
 }

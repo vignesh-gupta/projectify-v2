@@ -1,11 +1,27 @@
 "use client"
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import { AccountSettings } from "@/components/settings/account-settings"
-import { ProjectsList } from "@/components/settings/projects-list"
+import { ApiKeysList } from "@/components/settings/api-keys-list"
 import { DeleteAccount } from "@/components/settings/delete-account"
+import { ProjectsList } from "@/components/settings/projects-list"
+import { SettingTab, useSettingTab } from "@/hooks/nuqs/use-setting-tab"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@workspace/ui/components/tabs"
+
+export const tabs = [
+  { value: "account", label: "Account", Component: AccountSettings },
+  { value: "projects", label: "Projects", Component: ProjectsList },
+  { value: "api-keys", label: "API Keys", Component: ApiKeysList },
+  { value: "danger", label: "Danger Zone", Component: DeleteAccount },
+] as const
 
 export default function SettingsPage() {
+  const [tab, setTab] = useSettingTab()
+
   return (
     <div className="min-h-full">
       <header className="border-b border-border bg-background">
@@ -18,27 +34,26 @@ export default function SettingsPage() {
       </header>
 
       <div className="p-8">
-        <Tabs defaultValue="account" className="w-full">
+        <Tabs
+          value={tab}
+          onValueChange={(value) => setTab(value as SettingTab)}
+          className="w-full"
+        >
           <TabsList className="mb-8">
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="danger">Danger Zone</TabsTrigger>
+            {tabs.map(({ value, label }) => (
+              <TabsTrigger key={value} value={value}>
+                {label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value="account" className="space-y-6">
-            <AccountSettings />
-          </TabsContent>
-
-          <TabsContent value="projects" className="space-y-6">
-            <ProjectsList />
-          </TabsContent>
-
-          <TabsContent value="danger" className="space-y-6">
-            <DeleteAccount />
-          </TabsContent>
+          {tabs.map(({ value, Component }) => (
+            <TabsContent key={value} value={value}>
+              <Component />
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
     </div>
   )
 }
-

@@ -1,4 +1,5 @@
 import { Geist_Mono, Noto_Sans } from "next/font/google"
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/toaster"
@@ -33,14 +34,16 @@ export default function RootLayout({
         )}
       >
         <body suppressHydrationWarning>
-          <ConvexClientProvider>
-            <ThemeProvider>
-              <TooltipProvider>
-                {children}
-                <Toaster />
-              </TooltipProvider>
-            </ThemeProvider>
-          </ConvexClientProvider>
+          <NuqsAdapter>
+            <ConvexClientProvider>
+              <ThemeProvider>
+                <TooltipProvider>
+                  {children}
+                  <Toaster />
+                </TooltipProvider>
+              </ThemeProvider>
+            </ConvexClientProvider>
+          </NuqsAdapter>
         </body>
       </html>
     </ConvexAuthNextjsServerProvider>

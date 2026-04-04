@@ -19,10 +19,7 @@ export default function ResourcesPage() {
   }
 
   return (
-    <DropZoneWrapper
-      projectId={projectId}
-      onFileDrop={handleFileDrop}
-    >
+    <DropZoneWrapper projectId={projectId} onFileDrop={handleFileDrop}>
       <div className="h-full overflow-y-auto p-6">
         <div className="mx-auto max-w-7xl space-y-8">
           {/* Header */}
@@ -49,7 +46,14 @@ export default function ResourcesPage() {
                   </Link>
                 </Button>
               </div>
-              <FileList ref={fileListRef} projectId={projectId} limit={5} hideFolders={true} showPath={true} />
+              <FileList
+                ref={fileListRef}
+                projectId={projectId}
+                limit={5}
+                hideFolders
+                showPath
+                showAll
+              />
             </div>
 
             {/* Links Section */}
@@ -66,7 +70,13 @@ export default function ResourcesPage() {
                   </Link>
                 </Button>
               </div>
-              <LinkList projectId={projectId} limit={5} hideFolders={true} showPath={true} />
+              <LinkList
+                projectId={projectId}
+                limit={5}
+                hideFolders
+                showPath
+                showAll
+              />
             </div>
           </div>
         </div>

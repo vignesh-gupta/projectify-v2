@@ -1,12 +1,8 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
-import { useRouter, usePathname } from "next/navigation"
-import { FolderPlus, Home, MoreVertical, Pencil, Trash2 } from "lucide-react"
-import { useState } from "react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
-import { Button } from "@workspace/ui/components/button"
+import { useFolderId } from "@/hooks/nuqs/use-folder-id"
 import {
   Breadcrumb,
   BreadcrumbEllipsis,
@@ -16,6 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
+import { Button } from "@workspace/ui/components/button"
 import {
   Dialog,
   DialogContent,
@@ -33,9 +30,12 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import { useMutation, useQuery } from "convex/react"
+import { FolderPlus, Home, MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { useState } from "react"
 import { toast } from "sonner"
-import { RenameFolderDialog } from "./rename-folder-dialog"
 import { DeleteFolderDialog } from "./delete-folder-dialog"
+import { RenameFolderDialog } from "./rename-folder-dialog"
 
 interface FolderNavProps {
   projectId: Id<"projects">
@@ -49,22 +49,22 @@ export function FolderNav({ projectId, folderId, type }: FolderNavProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const router = useRouter()
-  const pathname = usePathname()
+
+  const { setFolderId } = useFolderId()
 
   const folderPath = useQuery(
     api.folders.getFolderPath,
-    folderId ? { folderId } : "skip"
+    folderId ? { folderId } : {}
   )
 
   const createFolder = useMutation(api.folders.createFolder)
 
   const navigateToFolder = (targetFolderId?: Id<"folders">) => {
-    if (targetFolderId) {
-      router.push(`${pathname}?folderId=${targetFolderId}`)
-    } else {
-      router.push(pathname)
+    if (!targetFolderId) {
+      return
     }
+
+    setFolderId(targetFolderId)
   }
 
   const handleCreateFolder = async (e: React.FormEvent) => {
@@ -123,51 +123,55 @@ export function FolderNav({ projectId, folderId, type }: FolderNavProps) {
 
     // If path is <= 4 items, show all
     if (folderPath.length <= 4) {
-      folderPath.forEach((folder: { _id: Id<"folders">; name: string }, index: number) => {
-        const isLast = index === folderPath.length - 1
+      folderPath.forEach(
+        (folder: { _id: Id<"folders">; name: string }, index: number) => {
+          const isLast = index === folderPath.length - 1
 
-        items.push(<BreadcrumbSeparator key={`sep-${folder._id}`} />)
+          items.push(<BreadcrumbSeparator key={`sep-${folder._id}`} />)
 
-        items.push(
-          <BreadcrumbItem key={folder._id}>
-            {isLast ? (
-              <div className="flex items-center gap-2">
-                <BreadcrumbPage className="font-medium">
+          items.push(
+            <BreadcrumbItem key={folder._id}>
+              {isLast ? (
+                <div className="flex items-center gap-2">
+                  <BreadcrumbPage className="font-medium">
+                    {folder.name}
+                  </BreadcrumbPage>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        <MoreVertical className="h-3.5 w-3.5" />
+                        <span className="sr-only">Folder actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setRenameDialogOpen(true)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDeleteDialogOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : (
+                <BreadcrumbLink
+                  onClick={() => navigateToFolder(folder._id)}
+                  className="cursor-pointer"
+                >
                   {folder.name}
-                </BreadcrumbPage>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <MoreVertical className="h-3.5 w-3.5" />
-                      <span className="sr-only">Folder actions</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setRenameDialogOpen(true)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Rename
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setDeleteDialogOpen(true)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ) : (
-              <BreadcrumbLink
-                onClick={() => navigateToFolder(folder._id)}
-                className="cursor-pointer"
-              >
-                {folder.name}
-              </BreadcrumbLink>
-            )}
-          </BreadcrumbItem>
-        )
-      })
+                </BreadcrumbLink>
+              )}
+            </BreadcrumbItem>
+          )
+        }
+      )
     } else {
       // Show first, ellipsis with dropdown, and last
       const first = folderPath[0]
@@ -231,7 +235,7 @@ export function FolderNav({ projectId, folderId, type }: FolderNavProps) {
                   <Pencil className="mr-2 h-4 w-4" />
                   Rename
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setDeleteDialogOpen(true)}
                   className="text-destructive focus:text-destructive"
                 >
@@ -286,7 +290,8 @@ export function FolderNav({ projectId, folderId, type }: FolderNavProps) {
             <DialogHeader>
               <DialogTitle>Create New Folder</DialogTitle>
               <DialogDescription>
-                Create a new folder to organize your {type === "file" ? "files" : "links"}.
+                Create a new folder to organize your{" "}
+                {type === "file" ? "files" : "links"}.
               </DialogDescription>
             </DialogHeader>
 

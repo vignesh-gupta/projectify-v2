@@ -122,6 +122,7 @@ export const listByProject = query({
     type: v.union(v.literal("file"), v.literal("link")),
     folderId: v.optional(v.id("folders")),
     limit: v.optional(v.number()),
+    showAll: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -139,6 +140,18 @@ export const listByProject = query({
 
     if (!membership) {
       throw new Error("Not a member of this project")
+    }
+
+    if (args.showAll) {
+      // If showAll is true, ignore folderId and return all resources of the specified type for the project
+      const resources = await ctx.db
+        .query("resources")
+        .withIndex("by_project_type", (q) =>
+          q.eq("projectId", args.projectId).eq("type", args.type)
+        )
+        .order("desc")
+        .take(args.limit || 1000)
+      return resources
     }
 
     // Query by folder (including null for root)

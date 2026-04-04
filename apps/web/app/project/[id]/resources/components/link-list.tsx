@@ -183,6 +183,7 @@ interface LinkListProps {
   limit?: number
   hideFolders?: boolean
   showPath?: boolean
+  showAll?: boolean
 }
 
 export function LinkList({
@@ -191,6 +192,7 @@ export function LinkList({
   limit,
   hideFolders = false,
   showPath = false,
+  showAll = false,
 }: LinkListProps) {
   const [editLink, setEditLink] = useState<Resource | null>(null)
   const [deleteLink, setDeleteLink] = useState<Resource | null>(null)
@@ -210,6 +212,7 @@ export function LinkList({
     type: "link",
     folderId,
     limit,
+    showAll,
   })
 
   const folders = useQuery(api.folders.listFolders, {

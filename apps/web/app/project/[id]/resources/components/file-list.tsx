@@ -36,6 +36,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import { RenameFileDialog } from "./rename-file-dialog"
 import { DeleteResourceDialog } from "./delete-resource-dialog"
 import { UploadProgressPanel, type UploadItem } from "./upload-progress-panel"
+import { FOLDER_ID_QUERY_KEY, useFolderId } from "@/hooks/nuqs/use-folder-id"
 
 type Resource = Doc<"resources">
 
@@ -198,6 +199,7 @@ interface FileListProps {
   limit?: number
   hideFolders?: boolean
   showPath?: boolean
+  showAll?: boolean
 }
 
 export interface FileListHandle {
@@ -206,7 +208,14 @@ export interface FileListHandle {
 
 export const FileList = forwardRef<FileListHandle, FileListProps>(
   (
-    { projectId, folderId, limit, hideFolders = false, showPath = false },
+    {
+      projectId,
+      folderId,
+      limit,
+      hideFolders = false,
+      showPath = false,
+      showAll = false,
+    },
     ref
   ) => {
     const [renameFile, setRenameFile] = useState<Resource | null>(null)
@@ -226,12 +235,14 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
     const [lastSelectedIndex, setLastSelectedIndex] = useState<number>(-1)
     const router = useRouter()
     const pathname = usePathname()
+    const { setFolderId } = useFolderId()
 
     const files = useQuery(api.resources.listByProject, {
       projectId,
       type: "file",
       folderId,
       limit,
+      showAll,
     })
 
     const folders = useQuery(api.folders.listFolders, {
@@ -254,7 +265,9 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
     )
     const previewUrl = useQuery(
       api.resources.getFileUrl,
-      previewingFile?.storageId ? { storageId: previewingFile.storageId } : "skip"
+      previewingFile?.storageId
+        ? { storageId: previewingFile.storageId }
+        : "skip"
     )
 
     const handleFileUpload = async (file: File) => {
@@ -416,10 +429,8 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
       if (event?.ctrlKey || event?.metaKey) {
         return
       }
-      const basePath = pathname?.includes("/files")
-        ? pathname
-        : `${pathname}/files`
-      router.push(`${basePath}?folder=${targetFolderId}`)
+
+      setFolderId(targetFolderId)
     }
 
     const handleFileClick = (
@@ -539,7 +550,7 @@ export const FileList = forwardRef<FileListHandle, FileListProps>(
       if (!basePath) return
 
       if (fileFolderId) {
-        router.push(`${basePath}?folder=${fileFolderId}`)
+        router.push(`${basePath}?${FOLDER_ID_QUERY_KEY}=${fileFolderId}`)
       } else {
         router.push(basePath)
       }

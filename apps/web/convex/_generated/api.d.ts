@@ -17,12 +17,14 @@ import type * as http from "../http.js";
 import type * as memberships from "../memberships.js";
 import type * as mentions from "../mentions.js";
 import type * as messages from "../messages.js";
+import type * as migration from "../migration.js";
 import type * as notifications from "../notifications.js";
 import type * as projects from "../projects.js";
 import type * as resources from "../resources.js";
 import type * as taskComments from "../taskComments.js";
 import type * as tasks from "../tasks.js";
 import type * as typing from "../typing.js";
+import type * as userApiKeys from "../userApiKeys.js";
 import type * as users from "../users.js";
 
 import type {
@@ -41,12 +43,14 @@ declare const fullApi: ApiFromModules<{
   memberships: typeof memberships;
   mentions: typeof mentions;
   messages: typeof messages;
+  migration: typeof migration;
   notifications: typeof notifications;
   projects: typeof projects;
   resources: typeof resources;
   taskComments: typeof taskComments;
   tasks: typeof tasks;
   typing: typeof typing;
+  userApiKeys: typeof userApiKeys;
   users: typeof users;
 }>;
 

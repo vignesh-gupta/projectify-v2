@@ -69,14 +69,10 @@ type ChangelogEntry = Doc<"changelog"> & {
   } | null
 }
 
-type ApiKeyRecord = Doc<"apiKeys">
 type WebhookRecord = Doc<"webhooks">
 type WebhookDeliveryRecord = Doc<"webhookDeliveries">
 
-type SecretState =
-  | { type: "apiKey"; value: string }
-  | { type: "webhook"; value: string }
-  | null
+type SecretState = { type: "webhook"; value: string } | null
 
 type EditorMode = "markdown" | "legacy-html"
 
@@ -85,7 +81,6 @@ export function ChangelogWorkspace() {
   const projectId = params.id as Id<"projects">
 
   const changelogData = useQuery(api.changelog.listByProject, { projectId })
-  const apiKeys = useQuery(api.changelog.listApiKeys, { projectId })
   const webhooks = useQuery(api.changelog.listWebhooks, { projectId })
   const webhookDeliveries = useQuery(api.changelog.listWebhookDeliveries, {
     projectId,
@@ -94,8 +89,6 @@ export function ChangelogWorkspace() {
   const createDraft = useMutation(api.changelog.createDraft)
   const updateDraft = useMutation(api.changelog.updateDraft)
   const publishEntry = useMutation(api.changelog.publish)
-  const createApiKey = useMutation(api.changelog.createApiKey)
-  const revokeApiKey = useMutation(api.changelog.revokeApiKey)
   const createWebhook = useMutation(api.changelog.createWebhook)
   const disableWebhook = useMutation(api.changelog.disableWebhook)
 
@@ -108,7 +101,6 @@ export function ChangelogWorkspace() {
   const [title, setTitle] = useState("")
   const [version, setVersion] = useState("")
   const [content, setContent] = useState("")
-  const [apiKeyName, setApiKeyName] = useState("")
   const [webhookName, setWebhookName] = useState("")
   const [webhookUrl, setWebhookUrl] = useState("")
 
@@ -117,7 +109,6 @@ export function ChangelogWorkspace() {
     []) as ChangelogEntry[]
   const role = changelogData?.role
   const isPrivileged = role === "owner" || role === "admin"
-  const apiKeyItems: ApiKeyRecord[] = (apiKeys ?? []) as ApiKeyRecord[]
   const webhookItems: WebhookRecord[] = (webhooks ?? []) as WebhookRecord[]
   const deliveryItems: WebhookDeliveryRecord[] = (webhookDeliveries ??
     []) as WebhookDeliveryRecord[]
@@ -191,26 +182,6 @@ export function ChangelogWorkspace() {
     }
   }
 
-  const handleCreateApiKey = async (event: React.FormEvent) => {
-    event.preventDefault()
-    try {
-      const result = await createApiKey({
-        projectId,
-        name: apiKeyName,
-      })
-      setSecretState({
-        type: "apiKey",
-        value: result.apiKey,
-      })
-      setApiKeyName("")
-      toast.success("API key created")
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create API key"
-      )
-    }
-  }
-
   const handleCreateWebhook = async (event: React.FormEvent) => {
     event.preventDefault()
     try {
@@ -239,9 +210,7 @@ export function ChangelogWorkspace() {
     }
 
     await navigator.clipboard.writeText(secretState.value)
-    toast.success(
-      `${secretState.type === "apiKey" ? "API key" : "Signing secret"} copied`
-    )
+    toast.success("Signing secret copied")
   }
 
   if (!project) {
@@ -279,11 +248,7 @@ export function ChangelogWorkspace() {
       {secretState && (
         <Alert>
           <KeyRound className="size-4" />
-          <AlertTitle>
-            {secretState.type === "apiKey"
-              ? "Copy this API key now"
-              : "Copy this webhook signing secret now"}
-          </AlertTitle>
+          <AlertTitle>Copy this webhook signing secret now</AlertTitle>
           <AlertDescription className="space-y-3">
             <p>
               This value is only shown once. Save it somewhere secure before you
@@ -470,69 +435,32 @@ export function ChangelogWorkspace() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">API keys</CardTitle>
+                <CardTitle className="text-base">API Keys</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {isPrivileged ? (
-                  <form className="space-y-3" onSubmit={handleCreateApiKey}>
+                <div className="rounded-lg border border-primary bg-primary/10 p-4">
+                  <div className="flex gap-3">
+                    <KeyRound className="h-5 w-5 shrink-0 text-primary" />
                     <div className="space-y-2">
-                      <Label htmlFor="api-key-name">Name</Label>
-                      <Input
-                        id="api-key-name"
-                        value={apiKeyName}
-                        onChange={(event) => setApiKeyName(event.target.value)}
-                        placeholder="Public changelog reader"
-                      />
-                    </div>
-                    <Button type="submit">Create API key</Button>
-                  </form>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Only owners and admins can manage API keys.
-                  </p>
-                )}
-
-                <div className="space-y-3">
-                  {apiKeyItems.map((item: ApiKeyRecord) => (
-                    <div
-                      key={item._id}
-                      className="flex flex-col gap-3 rounded-md border p-3"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          <p className="font-mono text-xs text-muted-foreground">
-                            {item.keyPreview}
-                          </p>
-                        </div>
-                        <Badge variant="outline">{item.status}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Last used: {formatChangelogDate(item.lastUsedAt)}
+                      <p className="text-sm font-medium text-primary">
+                        API keys can be created in Account Settings
                       </p>
-                      {isPrivileged && item.status === "active" && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            await revokeApiKey({ apiKeyId: item._id })
-                            toast.success("API key revoked")
-                          }}
-                        >
-                          Revoke
+
+                      <Link href="/settings?tab=api-keys">
+                        <Button size="sm" variant="outline" className="mt-2">
+                          Go to API Keys Settings
                         </Button>
-                      )}
+                      </Link>
                     </div>
-                  ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="xl:col-span-3">
               <CardHeader>
                 <CardTitle className="text-base">Webhooks</CardTitle>
               </CardHeader>
@@ -659,7 +587,7 @@ export function ChangelogWorkspace() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[720px]">
+        <DialogContent className="sm:max-w-180">
           <form onSubmit={handleSaveDraft}>
             <DialogHeader>
               <DialogTitle>

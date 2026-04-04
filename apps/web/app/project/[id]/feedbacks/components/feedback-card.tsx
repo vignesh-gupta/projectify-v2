@@ -2,7 +2,13 @@
 
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { ArrowUpRight, MessageSquare, RefreshCw, Sparkles, ThumbsUp } from "lucide-react"
+import {
+  ArrowUpRight,
+  MessageSquare,
+  RefreshCw,
+  Sparkles,
+  ThumbsUp,
+} from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/convex/_generated/api"
 import { Doc, Id } from "@/convex/_generated/dataModel"
@@ -34,6 +40,7 @@ import {
   type FeedbackStatus,
 } from "./feedback-helpers"
 import { useRouter } from "next/navigation"
+import { TASK_ID_QUERY_KEY } from "@/hooks/nuqs/use-task-id"
 
 type FeedbackItem = Doc<"feedback"> & {
   hasVoted: boolean
@@ -146,7 +153,9 @@ export function FeedbackCard({
     try {
       const result = await convertToTask({ feedbackId: feedback._id })
       toast.success(
-        result.alreadyLinked ? "Opened existing linked task" : "Feedback converted to task"
+        result.alreadyLinked
+          ? "Opened existing linked task"
+          : "Feedback converted to task"
       )
     } catch (error) {
       console.error(error)
@@ -181,7 +190,9 @@ export function FeedbackCard({
 
   const openLinkedTask = () => {
     if (!feedback.linkedTaskId) return
-    router.push(`/project/${feedback.projectId}/work-items?taskId=${feedback.linkedTaskId}`)
+    router.push(
+      `/project/${feedback.projectId}/work-items?${TASK_ID_QUERY_KEY}=${feedback.linkedTaskId}`
+    )
   }
 
   return (
@@ -227,7 +238,8 @@ export function FeedbackCard({
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Submitted by {submitterLabel} on {formatFeedbackDate(feedback.createdAt)}
+            Submitted by {submitterLabel} on{" "}
+            {formatFeedbackDate(feedback.createdAt)}
           </div>
         </CardHeader>
 
@@ -269,7 +281,9 @@ export function FeedbackCard({
                 disabled={isConvertSubmitting}
               >
                 <Sparkles className="mr-2 h-4 w-4" />
-                {feedback.linkedTaskId ? "Reuse Linked Task" : "Convert to Task"}
+                {feedback.linkedTaskId
+                  ? "Reuse Linked Task"
+                  : "Convert to Task"}
               </Button>
             ) : null}
           </div>
@@ -294,7 +308,8 @@ export function FeedbackCard({
             </div>
             <SheetTitle className="text-xl">{feedback.title}</SheetTitle>
             <SheetDescription>
-              Submitted by {submitterLabel} on {formatFeedbackDate(feedback.createdAt)}
+              Submitted by {submitterLabel} on{" "}
+              {formatFeedbackDate(feedback.createdAt)}
             </SheetDescription>
           </SheetHeader>
 
@@ -341,7 +356,9 @@ export function FeedbackCard({
 
                     {feedback.linkedTaskId ? (
                       <div className="space-y-2">
-                        <div className="text-sm font-medium">Linked work item</div>
+                        <div className="text-sm font-medium">
+                          Linked work item
+                        </div>
                         <Button
                           type="button"
                           variant="outline"

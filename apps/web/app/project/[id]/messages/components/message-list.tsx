@@ -1,7 +1,7 @@
 "use client"
 
 import { type Id } from "@/convex/_generated/dataModel"
-import { useScroll } from "@/hook/use-scroll"
+import { useScroll } from "@/hooks/use-scroll"
 import { Button } from "@workspace/ui/components/button"
 import { useRef } from "react"
 import { MessageItem } from "./message-item"

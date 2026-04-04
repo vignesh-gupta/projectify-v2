@@ -1,10 +1,11 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { type Id } from "@/convex/_generated/dataModel"
+import { FOLDER_ID_QUERY_KEY } from "@/hooks/nuqs/use-folder-id"
 import { Button } from "@workspace/ui/components/button"
-import { FileIcon, Download } from "lucide-react"
+import { useMutation, useQuery } from "convex/react"
+import { Download, FileIcon } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 
@@ -17,8 +18,13 @@ interface MessageAttachmentProps {
   projectId: Id<"projects">
 }
 
-export function MessageAttachment({ attachment, projectId }: MessageAttachmentProps) {
-  const url = useQuery(api.messages.getAttachmentUrl, { storageId: attachment.storageId })
+export function MessageAttachment({
+  attachment,
+  projectId,
+}: MessageAttachmentProps) {
+  const url = useQuery(api.messages.getAttachmentUrl, {
+    storageId: attachment.storageId,
+  })
   const ensureMessagesFolder = useMutation(api.folders.ensureMessagesFolder)
   const router = useRouter()
 
@@ -26,19 +32,19 @@ export function MessageAttachment({ attachment, projectId }: MessageAttachmentPr
     return (
       <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm">
         <FileIcon className="h-4 w-4 animate-pulse" />
-        <span className="truncate max-w-50">{attachment.name}</span>
+        <span className="max-w-50 truncate">{attachment.name}</span>
       </div>
     )
   }
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    
+
     try {
       const response = await fetch(url)
       const blob = await response.blob()
       const downloadUrl = window.URL.createObjectURL(blob)
-      
+
       const a = document.createElement("a")
       a.href = downloadUrl
       a.download = attachment.name
@@ -56,7 +62,9 @@ export function MessageAttachment({ attachment, projectId }: MessageAttachmentPr
       // Ensure messages folder exists and get its ID
       const folderId = await ensureMessagesFolder({ projectId })
       // Navigate to resources page with the folder ID
-      router.push(`/project/${projectId}/resources/files?folder=${folderId}`)
+      router.push(
+        `/project/${projectId}/resources/files?${FOLDER_ID_QUERY_KEY}=${folderId}`
+      )
     } catch (error) {
       console.error("Navigation failed:", error)
       // Fallback: navigate without folder
@@ -69,23 +77,23 @@ export function MessageAttachment({ attachment, projectId }: MessageAttachmentPr
 
   if (isImage) {
     return (
-      <div className="relative group">
+      <div className="group relative">
         <div
           onClick={handleClick}
-          className="block max-w-sm rounded-lg border overflow-hidden hover:opacity-90 transition-opacity cursor-pointer"
+          className="block max-w-sm cursor-pointer overflow-hidden rounded-lg border transition-opacity hover:opacity-90"
         >
           <Image
             src={url}
             alt={attachment.name}
             width={300}
             height={200}
-            className="object-cover w-full h-auto"
+            className="h-auto w-full object-cover"
           />
         </div>
         <Button
           variant="secondary"
           size="icon"
-          className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-2 right-2 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
           onClick={handleDownload}
         >
           <Download className="h-4 w-4" />
@@ -98,14 +106,14 @@ export function MessageAttachment({ attachment, projectId }: MessageAttachmentPr
   return (
     <div
       onClick={handleClick}
-      className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm max-w-xs hover:bg-accent cursor-pointer transition-colors"
+      className="flex max-w-xs cursor-pointer items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm transition-colors hover:bg-accent"
     >
       <FileIcon className="h-4 w-4 shrink-0" />
       <span className="flex-1 truncate">{attachment.name}</span>
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-6 p-0 shrink-0"
+        className="h-6 w-6 shrink-0 p-0"
         onClick={handleDownload}
       >
         <Download className="h-3 w-3" />
