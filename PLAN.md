@@ -429,7 +429,7 @@ notifications: defineTable({
 
 ---
 
-### Phase 3: Collaboration Features 🔄 (~75% Complete)
+### Phase 3: Collaboration Features ✅ (100% Complete)
 **Estimated Duration**: 6-8 weeks  
 **Priority**: MEDIUM
 
@@ -509,7 +509,7 @@ apps/web/components/
 - react-dropzone (for drag-and-drop uploads)
 - lucide-react (for file type icons)
 
-#### 3.2 Group Messaging (Complete) ✅
+#### 3.2 Group Messaging ✅ (100% Complete) 
 - [x] Design messages schema with threading
 - [x] Create backend functions (send, list, update, delete)
 - [x] Build real-time message list
@@ -644,7 +644,7 @@ feedbackComments: defineTable({
 - `apps/web/app/project/[id]/feedbacks/components/create-feedback-dialog.tsx`
 - `apps/web/app/feedback-board/[projectId]/page.tsx` (public board)
 
-#### 3.4 Task Comments & Discussions ✅ (50% Complete - Backend Done)
+#### 3.4 Task Comments & Discussions ✅ (100% Complete)
 - [x] Design comments schema with threading, mentions, attachments, reactions
 - [x] Create backend functions (create, listByTask, update, remove, toggleReaction, listByThread)
 - [x] Add notification types (task_comment, comment_mention, comment_reply)
@@ -675,7 +675,7 @@ taskComments: defineTable({
 **Files Created**:
 - `apps/web/convex/taskComments.ts` ✅ (Complete backend with all functions)
 
-#### 3.5 File Attachments for Tasks ✅ (50% Complete - Backend Done)
+#### 3.5 File Attachments for Tasks ✅ (100% Complete)
 - [x] Add attachments to task schema
 - [x] Create file upload functionality (generateAttachmentUploadUrl, addAttachment, removeAttachment)
 - [x] Add getAttachmentUrl query for downloads
@@ -703,20 +703,20 @@ tasks: defineTable({
 
 ---
 
-### Phase 4: Public Features & Integrations 🔮 (0% Complete)
+### Phase 4: Public Features & Integrations 🔮 (65% Complete)
 **Estimated Duration**: 4-6 weeks  
 **Priority**: LOW
 
-#### 4.1 Changelog Management (Not Started)
-- [ ] Design changelog schema
-- [ ] Create backend functions (create, list, update, publish)
-- [ ] Build changelog management UI
-- [ ] Create changelog entry form
-- [ ] Implement version numbering (semver)
+#### 4.1 Changelog Management (70% Complete)
+- [x] Design changelog schema
+- [x] Create backend functions (create, list, update, publish)
+- [x] Build changelog management UI
+- [x] Create changelog entry form
+- [x] Implement version numbering (semver)
 - [ ] Add markdown support
-- [ ] Build public changelog page
+- [x] Build public changelog page
 - [ ] Create embeddable changelog widget
-- [ ] Add RSS feed for changelog
+- [x] Add RSS feed for changelog
 - [ ] Implement email notifications for releases
 
 **Database Schema**:
@@ -725,13 +725,7 @@ changelog: defineTable({
   projectId: v.id("projects"),
   version: v.string(),
   title: v.string(),
-  description: v.string(), // Markdown
-  category: v.union(
-    v.literal("added"),
-    v.literal("changed"),
-    v.literal("fixed"),
-    v.literal("removed")
-  ),
+  content: v.string(), // HTML from the rich text editor
   status: v.union(v.literal("draft"), v.literal("published")),
   publishedAt: v.optional(v.number()),
   createdBy: v.id("users"),
@@ -744,21 +738,27 @@ changelog: defineTable({
 - `apps/web/convex/changelog.ts`
 - `apps/web/app/project/[id]/changelog/page.tsx`
 - `apps/web/app/changelog/[projectId]/page.tsx` (public)
-- Widget embed code
+- `apps/web/app/changelog/[projectId]/rss.xml/route.ts`
+- Widget embed code (Deferred)
 
-#### 4.2 Public API & Webhooks (Not Started)
-- [ ] Design API authentication (API keys)
-- [ ] Create HTTP endpoints for public data
-- [ ] Implement webhook system
-- [ ] Add webhook management UI
-- [ ] Document API endpoints
-- [ ] Create API key management
+#### 4.2 Public API & Webhooks (100% Complete)
+- [x] Design API authentication (API keys)
+- [x] Create HTTP endpoints for public data
+- [x] Implement webhook system
+- [x] Add webhook management UI
+- [x] Document API endpoints
+- [x] Create API key management
 
 #### 4.3 Third-party Integrations (Not Started)
 - [ ] GitHub integration (link repos, sync issues)
 - [ ] Slack integration (notifications)
 - [ ] Discord integration (notifications)
 - [ ] Email integration (notifications)
+
+**Phase 4 Notes**:
+- Public changelog page, RSS feed, API keys, read-only changelog API, webhook delivery, and webhook/API key management are now implemented.
+- Changelog content currently uses stored HTML from the rich text editor instead of markdown authoring.
+- Embeddable widget, release email notifications, and third-party integrations remain deferred.
 
 ---
 

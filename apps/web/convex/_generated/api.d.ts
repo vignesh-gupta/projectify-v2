@@ -9,6 +9,8 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as changelog from "../changelog.js";
+import type * as changelogWebhook from "../changelogWebhook.js";
 import type * as feedback from "../feedback.js";
 import type * as folders from "../folders.js";
 import type * as http from "../http.js";
@@ -31,6 +33,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  changelog: typeof changelog;
+  changelogWebhook: typeof changelogWebhook;
   feedback: typeof feedback;
   folders: typeof folders;
   http: typeof http;

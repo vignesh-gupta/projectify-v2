@@ -119,6 +119,76 @@ const schema = defineSchema({
     createdAt: v.number(),
   }).index("by_feedback", ["feedbackId"]),
 
+  changelog: defineTable({
+    projectId: v.id("projects"),
+    version: v.string(),
+    title: v.string(),
+    content: v.string(), // Stored as HTML from the rich text editor
+    status: v.union(v.literal("draft"), v.literal("published")),
+    publishedAt: v.optional(v.number()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_status", ["projectId", "status"])
+    .index("by_project_version", ["projectId", "version"])
+    .index("by_project_published", ["projectId", "publishedAt"]),
+
+  apiKeys: defineTable({
+    projectId: v.id("projects"),
+    name: v.string(),
+    keyHash: v.string(),
+    keyPreview: v.string(),
+    scopes: v.array(v.literal("read:changelog")),
+    status: v.union(v.literal("active"), v.literal("revoked")),
+    createdBy: v.id("users"),
+    lastUsedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_status", ["projectId", "status"]),
+
+  webhooks: defineTable({
+    projectId: v.id("projects"),
+    name: v.string(),
+    url: v.string(),
+    event: v.literal("changelog.published"),
+    signingSecret: v.string(),
+    secretPreview: v.string(),
+    status: v.union(v.literal("active"), v.literal("disabled")),
+    lastDeliveredAt: v.optional(v.number()),
+    lastDeliveryStatus: v.optional(
+      v.union(v.literal("success"), v.literal("failed"))
+    ),
+    createdBy: v.id("users"),
+    disabledAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_status", ["projectId", "status"]),
+
+  webhookDeliveries: defineTable({
+    webhookId: v.id("webhooks"),
+    projectId: v.id("projects"),
+    event: v.literal("changelog.published"),
+    changelogId: v.id("changelog"),
+    requestUrl: v.string(),
+    requestBody: v.string(),
+    responseStatus: v.optional(v.number()),
+    responseBody: v.optional(v.string()),
+    status: v.union(v.literal("success"), v.literal("failed")),
+    errorMessage: v.optional(v.string()),
+    deliveredAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_webhook", ["webhookId"])
+    .index("by_project", ["projectId"])
+    .index("by_changelog", ["changelogId"]),
+
   resources: defineTable({
     projectId: v.id("projects"),
     type: v.union(v.literal("file"), v.literal("link")),
