@@ -25,7 +25,10 @@ import { TaskCommentInput } from "./task-comment-input"
 import { TaskCommentThread } from "./task-comment-thread"
 
 type BaseTaskComment = Omit<Doc<"taskComments">, "reactions"> & {
-  reactions?: Record<string, Id<"users">[]>
+  reactions?: Array<{
+    emoji: string
+    userIds: Id<"users">[]
+  }>
 }
 
 export type TaskCommentWithReplies = BaseTaskComment & {
@@ -120,9 +123,7 @@ export function TaskCommentItem({
     }
   }
 
-  const groupedReactions = Object.entries(
-    (comment.reactions as Record<string, Id<"users">[]> | undefined) ?? {}
-  )
+  const groupedReactions = comment.reactions ?? []
 
   const getInitials = (name?: string | null, email?: string) => {
     if (name) {
@@ -262,7 +263,7 @@ export function TaskCommentItem({
 
           {groupedReactions.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {groupedReactions.map(([emoji, userIds]) => {
+              {groupedReactions.map(({ emoji, userIds }) => {
                 const reacted = !!user && userIds.includes(user._id)
                 return (
                   <Button

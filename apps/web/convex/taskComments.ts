@@ -10,18 +10,19 @@ type StoredReaction = {
 
 const normalizeReactions = (
   reactions: StoredReaction[] | Record<string, Id<"users">[]> | undefined
-): Record<string, Id<"users">[]> => {
+): StoredReaction[] => {
   if (!reactions) {
-    return {}
+    return []
   }
 
   if (Array.isArray(reactions)) {
-    return Object.fromEntries(
-      reactions.map((reaction) => [reaction.emoji, reaction.userIds])
-    )
+    return reactions
   }
 
-  return reactions
+  return Object.entries(reactions).map(([emoji, userIds]) => ({
+    emoji,
+    userIds,
+  }))
 }
 
 const serializeReactions = (
@@ -372,7 +373,10 @@ export const toggleReaction = mutation({
         | Record<string, Id<"users">[]>
         | undefined
     )
-    const emojiReactions = existingReactions[args.emoji] || []
+    const reactionMap = Object.fromEntries(
+      existingReactions.map((reaction) => [reaction.emoji, reaction.userIds])
+    ) as Record<string, Id<"users">[]>
+    const emojiReactions = reactionMap[args.emoji] || []
 
     // Toggle: add or remove user's reaction
     const userReacted = emojiReactions.includes(userId)
@@ -381,19 +385,15 @@ export const toggleReaction = mutation({
       : [...emojiReactions, userId]
 
     // Update or remove the emoji key
-    const newReactions = { ...existingReactions }
+    const newReactions = { ...reactionMap }
     if (updatedReactions.length === 0) {
       delete newReactions[args.emoji]
     } else {
       newReactions[args.emoji] = updatedReactions
     }
 
-    const reactions = serializeReactions(newReactions)
-
-    console.log({ reactions })
-
-    await ctx.db.patch(args.commentId, {
-      reactions,
+    return await ctx.db.patch(args.commentId, {
+      reactions: serializeReactions(newReactions),
     })
   },
 })
