@@ -1,7 +1,26 @@
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import type { Doc } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
+import {
+  authenticateApiKey,
+  requireProjectMembership,
+  requireScope,
+} from "./lib/apiKeyAuth"
+
+function serializeTask(task: Doc<"tasks">) {
+  return {
+    id: task._id,
+    projectId: task.projectId,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    priority: task.priority,
+    dueDate: task.dueDate,
+    assigneeUserId: task.assigneeUserId,
+  }
+}
 
 /**
  * Create a new task
@@ -114,6 +133,49 @@ export const listByProject = query({
       .query("tasks")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect()
+  },
+})
+
+export const listByApiKey = query({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    status: v.optional(
+      v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done"))
+    ),
+    priority: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high"))
+    ),
+    assigneeUserId: v.optional(v.id("users")),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "tasks:read")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+
+    const filtered = tasks.filter((task) => {
+      if (args.status && task.status !== args.status) return false
+      if (args.priority && task.priority !== args.priority) return false
+      if (args.assigneeUserId && task.assigneeUserId !== args.assigneeUserId)
+        return false
+      return true
+    })
+
+    const offset = Math.max(0, args.offset ?? 0)
+    const limit = Math.max(1, Math.min(1000, args.limit ?? 50))
+    const paginated = filtered.slice(offset, offset + limit)
+
+    return {
+      tasks: paginated.map(serializeTask),
+      total: filtered.length,
+    }
   },
 })
 
@@ -232,6 +294,154 @@ export const update = mutation({
     }
 
     return taskId
+  },
+})
+
+export const createByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.optional(
+      v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done"))
+    ),
+    priority: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high"))
+    ),
+    dueDate: v.optional(v.number()),
+    assigneeUserId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "tasks:write")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const now = Date.now()
+    const taskId = await ctx.db.insert("tasks", {
+      projectId: args.projectId,
+      title: args.title,
+      description: args.description,
+      status: args.status ?? "todo",
+      priority: args.priority ?? "medium",
+      dueDate: args.dueDate,
+      assigneeUserId: args.assigneeUserId,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: auth.userId,
+    })
+
+    const task = await ctx.db.get(taskId)
+    if (!task) {
+      throw new Error("Failed to create task")
+    }
+
+    return { task: serializeTask(task) }
+  },
+})
+
+export const getByApiKey = query({
+  args: {
+    apiKey: v.string(),
+    taskId: v.id("tasks"),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "tasks:read")
+
+    const task = await ctx.db.get(args.taskId)
+    if (!task) {
+      throw new Error("Task not found")
+    }
+
+    await requireProjectMembership(ctx, task.projectId, auth.userId)
+    return { task: serializeTask(task) }
+  },
+})
+
+export const updateByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    taskId: v.id("tasks"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    status: v.optional(
+      v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done"))
+    ),
+    priority: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high"))
+    ),
+    dueDate: v.optional(v.number()),
+    assigneeUserId: v.optional(v.id("users")),
+    clearAssignee: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "tasks:write")
+
+    const task = await ctx.db.get(args.taskId)
+    if (!task) {
+      throw new Error("Task not found")
+    }
+
+    await requireProjectMembership(ctx, task.projectId, auth.userId)
+
+    const patchData: Partial<Doc<"tasks">> & { updatedAt: number } = {
+      updatedAt: Date.now(),
+    }
+
+    if (args.title !== undefined) patchData.title = args.title
+    if (args.description !== undefined) patchData.description = args.description
+    if (args.status !== undefined) patchData.status = args.status
+    if (args.priority !== undefined) patchData.priority = args.priority
+    if (args.dueDate !== undefined) patchData.dueDate = args.dueDate
+    if (args.assigneeUserId !== undefined)
+      patchData.assigneeUserId = args.assigneeUserId
+    if (args.clearAssignee) patchData.assigneeUserId = undefined
+
+    if (Object.keys(patchData).length === 1) {
+      throw new Error("At least one field is required to update")
+    }
+
+    await ctx.db.patch(args.taskId, patchData)
+    const updatedTask = await ctx.db.get(args.taskId)
+    if (!updatedTask) {
+      throw new Error("Task not found")
+    }
+
+    return { task: serializeTask(updatedTask) }
+  },
+})
+
+export const deleteByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    taskId: v.id("tasks"),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "tasks:write")
+
+    const task = await ctx.db.get(args.taskId)
+    if (!task) {
+      throw new Error("Task not found")
+    }
+
+    const membership = await requireProjectMembership(
+      ctx,
+      task.projectId,
+      auth.userId
+    )
+    if (membership.role === "member" && task.createdBy !== auth.userId) {
+      throw new Error("Forbidden: insufficient permissions")
+    }
+
+    await ctx.db.delete(args.taskId)
+
+    return {
+      success: true,
+      message: "Task deleted successfully",
+    }
   },
 })
 

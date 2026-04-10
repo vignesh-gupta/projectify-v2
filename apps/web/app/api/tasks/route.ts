@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
 import type { Id } from "@/convex/_generated/dataModel"
+import { api } from "@/convex/_generated/api"
 
 function getConvexClient() {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
@@ -64,14 +65,27 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const status = searchParams.get("status") ?? undefined
-    const priority = searchParams.get("priority") ?? undefined
+    const statusParam = searchParams.get("status")
+    const status =
+      statusParam === "todo" ||
+      statusParam === "in_progress" ||
+      statusParam === "done"
+        ? statusParam
+        : undefined
+
+    const priorityParam = searchParams.get("priority")
+    const priority =
+      priorityParam === "low" ||
+      priorityParam === "medium" ||
+      priorityParam === "high"
+        ? priorityParam
+        : undefined
     const assigneeId = searchParams.get("assigneeId") ?? undefined
     const limit = searchParams.get("limit")
     const offset = searchParams.get("offset")
 
     const client = getConvexClient()
-    const result = (await client.query("cliApi:listTasks" as never, {
+    const result = await client.query(api.tasks.listByApiKey, {
       apiKey,
       projectId: projectId as Id<"projects">,
       status,
@@ -79,13 +93,10 @@ export async function GET(request: NextRequest) {
       assigneeUserId: assigneeId ? (assigneeId as Id<"users">) : undefined,
       limit: limit ? Number.parseInt(limit, 10) : undefined,
       offset: offset ? Number.parseInt(offset, 10) : undefined,
-    } as never)) as unknown as {
-      tasks: Array<{ dueDate?: number; [key: string]: unknown }>
-      total: number
-    }
+    })
 
     return NextResponse.json({
-      tasks: result.tasks.map((task: { dueDate?: number; [key: string]: unknown }) => ({
+      tasks: result.tasks.map((task) => ({
         ...task,
         dueDate: toIsoDate(task.dueDate),
       })),
@@ -124,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     const client = getConvexClient()
-    const result = (await client.mutation("cliApi:createTask" as never, {
+    const result = await client.mutation(api.tasks.createByApiKey, {
       apiKey,
       projectId: body.projectId as Id<"projects">,
       title: body.title.trim(),
@@ -135,9 +146,7 @@ export async function POST(request: NextRequest) {
       assigneeUserId: body.assigneeUserId
         ? (body.assigneeUserId as Id<"users">)
         : undefined,
-    } as never)) as unknown as {
-      task: { dueDate?: number; [key: string]: unknown }
-    }
+    })
 
     return NextResponse.json({
       task: {

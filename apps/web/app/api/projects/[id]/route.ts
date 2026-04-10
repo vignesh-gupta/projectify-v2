@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
+import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 
 function getConvexClient() {
@@ -54,12 +55,10 @@ export async function GET(
 
     const { id } = await context.params
     const client = getConvexClient()
-    const result = (await client.query("cliApi:getProject" as never, {
+    const result = await client.query(api.projects.getByApiKey, {
       apiKey,
       projectId: id as Id<"projects">,
-    } as never)) as unknown as {
-      project: { dueDate?: number; [key: string]: unknown }
-    }
+    })
 
     return NextResponse.json({
       project: {
@@ -87,10 +86,10 @@ export async function DELETE(
 
     const { id } = await context.params
     const client = getConvexClient()
-    const result = (await client.mutation("cliApi:deleteProject" as never, {
+    const result = await client.mutation(api.projects.deleteByApiKey, {
       apiKey,
       projectId: id as Id<"projects">,
-    } as never)) as unknown as { success: boolean; message?: string }
+    })
 
     return NextResponse.json(result)
   } catch (error) {

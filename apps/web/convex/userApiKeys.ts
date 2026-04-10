@@ -3,6 +3,7 @@ import { mutation, query, action, internalMutation } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { api, internal } from "./_generated/api"
 import { Id } from "./_generated/dataModel"
+import { authenticateApiKey } from "./lib/apiKeyAuth"
 
 // Default configuration
 const DEFAULT_MAX_KEYS = 10
@@ -488,5 +489,30 @@ export const markKeyUsed = internalMutation({
     await ctx.db.patch(args.keyId, {
       lastUsedAt: Date.now(),
     })
+  },
+})
+
+export const validateApiKey = query({
+  args: {
+    apiKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const auth = await authenticateApiKey(ctx, args.apiKey)
+      const user = await ctx.db.get(auth.userId)
+      return {
+        valid: true as const,
+        user: {
+          id: auth.userId,
+          name: user?.name ?? "",
+          email: user?.email ?? "",
+        },
+      }
+    } catch (error) {
+      return {
+        valid: false as const,
+        error: error instanceof Error ? error.message : "Invalid API key",
+      }
+    }
   },
 })

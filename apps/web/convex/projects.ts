@@ -1,6 +1,23 @@
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import type { Doc } from "./_generated/dataModel"
+import {
+  authenticateApiKey,
+  requireProjectMembership,
+  requireScope,
+} from "./lib/apiKeyAuth"
+
+function serializeProject(project: Doc<"projects">) {
+  return {
+    id: project._id,
+    title: project.title,
+    description: project.description,
+    status: project.status,
+    dueDate: project.dueDate,
+    icon: project.iconName ?? null,
+  }
+}
 
 /**
  * Create a new project
@@ -76,6 +93,49 @@ export const list = query({
     )
 
     return projects.filter((p) => p !== null)
+  },
+})
+
+export const listByApiKey = query({
+  args: {
+    apiKey: v.string(),
+    status: v.optional(
+      v.union(
+        v.literal("development"),
+        v.literal("maintenance"),
+        v.literal("inactive")
+      )
+    ),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:read")
+
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_user", (q) => q.eq("userId", auth.userId))
+      .collect()
+
+    const projects = (
+      await Promise.all(
+        memberships.map((membership) => ctx.db.get(membership.projectId))
+      )
+    ).filter((item) => item !== null)
+
+    const filtered = args.status
+      ? projects.filter((project) => project.status === args.status)
+      : projects
+
+    const offset = Math.max(0, args.offset ?? 0)
+    const limit = Math.max(1, Math.min(1000, args.limit ?? 50))
+    const paginated = filtered.slice(offset, offset + limit)
+
+    return {
+      projects: paginated.map(serializeProject),
+      total: filtered.length,
+    }
   },
 })
 
@@ -271,6 +331,25 @@ export const getProject = query({
       ...project,
       role: membership.role,
     }
+  },
+})
+
+export const getByApiKey = query({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:read")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const project = await ctx.db.get(args.projectId)
+    if (!project) {
+      throw new Error("Project not found")
+    }
+
+    return { project: serializeProject(project) }
   },
 })
 
@@ -473,6 +552,111 @@ export const deleteProject = mutation({
     await ctx.db.delete(args.projectId)
 
     return { success: true }
+  },
+})
+
+export const createByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("development"),
+        v.literal("maintenance"),
+        v.literal("inactive")
+      )
+    ),
+    dueDate: v.optional(v.number()),
+    icon: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:write")
+
+    const now = Date.now()
+    const projectId = await ctx.db.insert("projects", {
+      title: args.title,
+      description: args.description ?? "",
+      status: args.status ?? "development",
+      dueDate: args.dueDate,
+      iconName: args.icon,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    await ctx.db.insert("memberships", {
+      projectId,
+      userId: auth.userId,
+      role: "owner",
+      joinedAt: now,
+    })
+
+    const project = await ctx.db.get(projectId)
+    if (!project) {
+      throw new Error("Failed to create project")
+    }
+
+    return { project: serializeProject(project) }
+  },
+})
+
+export const deleteByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:write")
+
+    const membership = await requireProjectMembership(
+      ctx,
+      args.projectId,
+      auth.userId
+    )
+    if (membership.role === "member") {
+      throw new Error("Forbidden: only owners/admins can delete projects")
+    }
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const task of tasks) {
+      await ctx.db.delete(task._id)
+    }
+
+    const resources = await ctx.db
+      .query("resources")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const resource of resources) {
+      await ctx.db.delete(resource._id)
+    }
+
+    const folders = await ctx.db
+      .query("folders")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const folder of folders) {
+      await ctx.db.delete(folder._id)
+    }
+
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+    for (const projectMembership of memberships) {
+      await ctx.db.delete(projectMembership._id)
+    }
+
+    await ctx.db.delete(args.projectId)
+
+    return {
+      success: true,
+      message: "Project deleted successfully",
+    }
   },
 })
 

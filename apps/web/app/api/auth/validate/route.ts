@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
+import { api } from "@/convex/_generated/api"
 
 function getConvexClient() {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
@@ -14,8 +15,6 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as { apiKey?: string }
     const apiKey = body.apiKey?.trim()
 
-    console.log({ apiKey })
-
     if (!apiKey) {
       return NextResponse.json(
         { valid: false, error: "API key is required" },
@@ -24,16 +23,9 @@ export async function POST(request: NextRequest) {
     }
 
     const client = getConvexClient()
-    const result = (await client.query(
-      "cliApi:validateApiKey" as never,
-      {
-        apiKey,
-      } as never
-    )) as unknown as {
-      valid: boolean
-      user?: { id: string; name?: string; email?: string }
-      error?: string
-    }
+    const result = await client.query(api.userApiKeys.validateApiKey, {
+      apiKey,
+    })
 
     if (!result.valid) {
       return NextResponse.json(result, { status: 401 })

@@ -75,7 +75,7 @@ export async function GET(
 
     const { id } = await context.params
     const client = getConvexClient()
-    const result = await client.query(api.cliApi.getTask, {
+    const result = await client.query(api.tasks.getByApiKey, {
       apiKey,
       taskId: id as Id<"tasks">,
     })
@@ -115,23 +115,18 @@ export async function PATCH(
     }
 
     const client = getConvexClient()
-    const result = (await client.mutation(
-      "cliApi:updateTask" as never,
-      {
-        apiKey,
-        taskId: id as Id<"tasks">,
-        title: body.title,
-        description: body.description,
-        status: body.status,
-        priority: body.priority,
-        dueDate: toTimestamp(body.dueDate),
-        assigneeUserId: body.assigneeUserId
-          ? (body.assigneeUserId as Id<"users">)
-          : undefined,
-      } as never
-    )) as unknown as {
-      task: { dueDate?: number; [key: string]: unknown }
-    }
+    const result = await client.mutation(api.tasks.updateByApiKey, {
+      apiKey,
+      taskId: id as Id<"tasks">,
+      title: body.title,
+      description: body.description,
+      status: body.status,
+      priority: body.priority,
+      dueDate: toTimestamp(body.dueDate),
+      assigneeUserId: body.assigneeUserId
+        ? (body.assigneeUserId as Id<"users">)
+        : undefined,
+    })
 
     return NextResponse.json({
       task: {
@@ -159,13 +154,10 @@ export async function DELETE(
 
     const { id } = await context.params
     const client = getConvexClient()
-    const result = (await client.mutation(
-      "cliApi:deleteTask" as never,
-      {
-        apiKey,
-        taskId: id as Id<"tasks">,
-      } as never
-    )) as unknown as { success: boolean; message?: string }
+    const result = await client.mutation(api.tasks.deleteByApiKey, {
+      apiKey,
+      taskId: id as Id<"tasks">,
+    })
 
     return NextResponse.json(result)
   } catch (error) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
+import { api } from "@/convex/_generated/api"
 
 function getConvexClient() {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
@@ -58,23 +59,26 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
-    const status = searchParams.get("status") ?? undefined
+    const statusParam = searchParams.get("status")
+    const status =
+      statusParam === "development" ||
+      statusParam === "maintenance" ||
+      statusParam === "inactive"
+        ? statusParam
+        : undefined
     const limit = searchParams.get("limit")
     const offset = searchParams.get("offset")
 
     const client = getConvexClient()
-    const result = (await client.query("cliApi:listProjects" as never, {
+    const result = await client.query(api.projects.listByApiKey, {
       apiKey,
       status,
       limit: limit ? Number.parseInt(limit, 10) : undefined,
       offset: offset ? Number.parseInt(offset, 10) : undefined,
-    } as never)) as unknown as {
-      projects: Array<{ dueDate?: number; [key: string]: unknown }>
-      total: number
-    }
+    })
 
     return NextResponse.json({
-      projects: result.projects.map((project: { dueDate?: number; [key: string]: unknown }) => ({
+      projects: result.projects.map((project) => ({
         ...project,
         dueDate: toIsoDate(project.dueDate),
       })),
@@ -111,16 +115,14 @@ export async function POST(request: NextRequest) {
     }
 
     const client = getConvexClient()
-    const result = (await client.mutation("cliApi:createProject" as never, {
+    const result = await client.mutation(api.projects.createByApiKey, {
       apiKey,
       title: body.title.trim(),
       description: body.description,
       status: body.status,
       dueDate: toTimestamp(body.dueDate),
       icon: body.icon,
-    } as never)) as unknown as {
-      project: { dueDate?: number; [key: string]: unknown }
-    }
+    })
 
     return NextResponse.json({
       project: {
