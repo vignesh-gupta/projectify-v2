@@ -89,7 +89,7 @@ export class ApiClient {
     const payload: unknown = text ? safeParseJSON(text) : {}
 
     if (!response.ok) {
-      const message = extractErrorMessage(payload) || `Request failed (${response.status})`
+      const message = getFriendlyErrorMessage(response.status, payload)
 
       if (response.status === 401 || response.status === 403) {
         throw new AuthError(message)
@@ -127,6 +127,38 @@ function extractErrorMessage(payload: unknown): string | undefined {
   }
 
   return undefined
+}
+
+function getFriendlyErrorMessage(status: number, payload: unknown): string {
+  const rawMessage = (extractErrorMessage(payload) || "").toLowerCase()
+
+  if (status === 400 || status === 422) {
+    if (
+      rawMessage.includes("argumentvalidationerror") ||
+      rawMessage.includes("does not match validator") ||
+      rawMessage.includes("v.id(") ||
+      rawMessage.includes("invalid id") ||
+      rawMessage.includes("taskid") ||
+      rawMessage.includes("projectid")
+    ) {
+      return "Invalid ID"
+    }
+    return "Invalid input"
+  }
+
+  if (status === 401 || status === 403) {
+    return "Authentication failed"
+  }
+
+  if (status === 404) {
+    return "Not found"
+  }
+
+  if (status >= 500) {
+    return "Something went wrong"
+  }
+
+  return "Request failed"
 }
 
 export const apiClient = new ApiClient()

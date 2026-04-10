@@ -4,6 +4,7 @@ import inquirer from "inquirer"
 import { apiClient } from "../api-client.js"
 import { config, DEFAULT_BASE_URL } from "../config.js"
 import { handleError } from "../errors.js"
+import { startSpinner, stopSpinner, succeedSpinner } from "../utils/spinner.js"
 
 interface ValidateResponse {
   valid: boolean
@@ -48,6 +49,7 @@ export function createAuthCommand(): Command {
         const baseUrl = String(answers.baseUrl).trim()
         const apiKey = String(answers.apiKey).trim()
 
+        const { spinner, startedAt } = startSpinner("Validating credentials...")
         apiClient.setBaseUrl(baseUrl)
         await apiClient.validateApiKey(apiKey)
 
@@ -59,7 +61,7 @@ export function createAuthCommand(): Command {
           apiKey,
         })
 
-        console.log(chalk.green("✓"), "Authentication successful")
+        await succeedSpinner(spinner, startedAt, chalk.green("Authentication successful"))
         if (result.user) {
           console.log(
             chalk.dim("User:"),
@@ -77,8 +79,9 @@ export function createAuthCommand(): Command {
     .description("Remove stored API credentials")
     .option("--local", "Remove only local config credentials")
     .option("--global", "Remove only global config credentials")
-    .action((options, command) => {
+    .action(async (options, command) => {
       try {
+        const { spinner, startedAt } = startSpinner("Clearing credentials...")
         const hadApiKey = Boolean(config.get("apiKey"))
         if (options.local && !options.global) {
           config.delete("apiKey", { local: true })
@@ -90,8 +93,9 @@ export function createAuthCommand(): Command {
         }
 
         if (hadApiKey) {
-          console.log(chalk.green("✓"), "Logged out")
+          await succeedSpinner(spinner, startedAt, chalk.green("Logged out"))
         } else {
+          await stopSpinner(spinner, startedAt)
           console.log(chalk.yellow("No stored API key found"))
         }
       } catch (error) {
@@ -114,9 +118,11 @@ export function createAuthCommand(): Command {
         }
 
         apiClient.setBaseUrl(baseUrl)
+        const { spinner, startedAt } = startSpinner("Checking authentication...")
         const result = await apiClient.post<ValidateResponse>("/api/auth/validate", {
           apiKey,
         })
+        await stopSpinner(spinner, startedAt)
 
         if (!result.valid) {
           console.log(chalk.red("Authentication invalid"))

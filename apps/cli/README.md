@@ -31,7 +31,10 @@ pjfy auth login
 pjfy config set baseUrl http://localhost:3000
 
 # Set a default project
-pjfy config set defaultProject <project-id>
+pjfy projects
+
+# Or set by id
+pjfy project use <project-id>
 
 # List projects
 pjfy projects list
@@ -86,6 +89,12 @@ pjfy config list
 ```bash
 # List all projects
 pjfy projects list [--status <status>] [--limit <n>] [--json]
+
+# Select and save default project
+pjfy projects
+
+# Set default project directly by ID
+pjfy project use <id>
 
 # Create a project
 pjfy projects create --title "My Project" --description "Description" [--status development] [--due-date 2026-12-31]

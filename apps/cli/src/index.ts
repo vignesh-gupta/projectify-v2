@@ -3,7 +3,7 @@
 import { Command } from "commander"
 import chalk from "chalk"
 import { createAuthCommand } from "./commands/auth.js"
-import { createProjectsCommand } from "./commands/projects.js"
+import { createProjectCommand, createProjectsCommand } from "./commands/projects.js"
 import { createTasksCommand } from "./commands/tasks.js"
 import { createConfigCommand } from "./commands/config.js"
 
@@ -25,6 +25,7 @@ program
 program.addCommand(createAuthCommand())
 program.addCommand(createConfigCommand())
 program.addCommand(createProjectsCommand())
+program.addCommand(createProjectCommand())
 program.addCommand(createTasksCommand())
 
 // Help text
@@ -35,6 +36,8 @@ ${chalk.bold("Examples:")}
   $ pjfy auth login                          # Authenticate with Projectify
   $ pjfy auth status                         # Check authentication status
   $ pjfy config set defaultProject <id>      # Set default project
+  $ pjfy projects                             # Select and save default project
+  $ pjfy project use <id>                     # Set default project by ID
   $ pjfy projects list                       # List all projects
   $ pjfy projects create --interactive       # Create a project (interactive)
   $ pjfy tasks list --project <id>           # List tasks for a project

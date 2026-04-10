@@ -1,6 +1,5 @@
 import { Command } from "commander"
 import chalk from "chalk"
-import ora from "ora"
 import { apiClient } from "../api-client.js"
 import { config, DEFAULT_BASE_URL } from "../config.js"
 import { handleError, requireAuth, ValidationError } from "../errors.js"
@@ -13,6 +12,7 @@ import {
   truncate,
 } from "../utils/formatters.js"
 import { promptConfirm, promptTaskCreate } from "../utils/prompts.js"
+import { failSpinner, startSpinner, stopSpinner, succeedSpinner } from "../utils/spinner.js"
 
 interface Task {
   id: string
@@ -69,14 +69,14 @@ export function createTasksCommand(): Command {
           )
         }
 
-        const spinner = ora("Fetching tasks...").start()
+        const { spinner, startedAt } = startSpinner("Fetching tasks...")
         const result = await apiClient.get<TaskListResponse>("/api/tasks", {
           projectId,
           status: options.status,
           priority: options.priority,
           limit: Number.parseInt(options.limit, 10),
         })
-        spinner.stop()
+        await stopSpinner(spinner, startedAt)
 
         const globalOpts = command.parent?.opts() || {}
         const useJSON = options.json || globalOpts.json
@@ -158,9 +158,13 @@ export function createTasksCommand(): Command {
           }
         }
 
-        const spinner = ora("Creating task...").start()
+        const { spinner, startedAt } = startSpinner("Creating task...")
         const result = await apiClient.post<TaskResponse>("/api/tasks", taskData)
-        spinner.succeed(chalk.green(`Task created: ${result.task.title}`))
+        await succeedSpinner(
+          spinner,
+          startedAt,
+          chalk.green(`Task created: ${result.task.title}`)
+        )
         console.log(chalk.dim(`ID: ${result.task.id}`))
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)
@@ -174,9 +178,9 @@ export function createTasksCommand(): Command {
     .action(async (id, options, command) => {
       try {
         configureClient()
-        const spinner = ora("Fetching task...").start()
+        const { spinner, startedAt } = startSpinner("Fetching task...")
         const result = await apiClient.get<TaskResponse>(`/api/tasks/${id}`)
-        spinner.stop()
+        await stopSpinner(spinner, startedAt)
 
         const globalOpts = command.parent?.opts() || {}
         const useJSON = options.json || globalOpts.json
@@ -221,9 +225,9 @@ export function createTasksCommand(): Command {
           throw new ValidationError("At least one update option is required")
         }
 
-        const spinner = ora("Updating task...").start()
+        const { spinner, startedAt } = startSpinner("Updating task...")
         await apiClient.patch<TaskResponse>(`/api/tasks/${id}`, updates)
-        spinner.succeed(chalk.green("Task updated"))
+        await succeedSpinner(spinner, startedAt, chalk.green("Task updated"))
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)
       }
@@ -237,7 +241,11 @@ export function createTasksCommand(): Command {
     .action(async (id, options, command) => {
       try {
         configureClient()
+        const { spinner: fetchSpinner, startedAt: fetchStartedAt } = startSpinner(
+          "Fetching task..."
+        )
         const taskResult = await apiClient.get<TaskResponse>(`/api/tasks/${id}`)
+        await stopSpinner(fetchSpinner, fetchStartedAt)
 
         if (!options.force) {
           const confirmed = await promptConfirm(
@@ -249,15 +257,15 @@ export function createTasksCommand(): Command {
           }
         }
 
-        const spinner = ora("Deleting task...").start()
+        const { spinner, startedAt } = startSpinner("Deleting task...")
         const result = await apiClient.delete<{ success: boolean; message?: string }>(
           `/api/tasks/${id}`
         )
 
         if (result.success) {
-          spinner.succeed(chalk.green(result.message || "Task deleted"))
+          await succeedSpinner(spinner, startedAt, chalk.green(result.message || "Task deleted"))
         } else {
-          spinner.fail(chalk.red("Task deletion failed"))
+          await failSpinner(spinner, startedAt, chalk.red("Task deletion failed"))
         }
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)

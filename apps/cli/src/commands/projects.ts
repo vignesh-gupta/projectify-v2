@@ -1,11 +1,26 @@
 import { Command } from "commander"
 import chalk from "chalk"
-import ora from "ora"
 import { apiClient } from "../api-client.js"
 import { config, DEFAULT_BASE_URL } from "../config.js"
 import { handleError, requireAuth, ValidationError } from "../errors.js"
-import { formatDate, formatJSON, formatStatus, formatTable, truncate } from "../utils/formatters.js"
-import { promptConfirm, promptProjectCreate } from "../utils/prompts.js"
+import {
+  formatDate,
+  formatJSON,
+  formatStatus,
+  formatTable,
+  truncate,
+} from "../utils/formatters.js"
+import {
+  promptConfirm,
+  promptProjectCreate,
+  promptProjectSelect,
+} from "../utils/prompts.js"
+import {
+  failSpinner,
+  startSpinner,
+  stopSpinner,
+  succeedSpinner,
+} from "../utils/spinner.js"
 
 interface Project {
   id: string
@@ -37,8 +52,70 @@ function toIsoDate(value?: number): string | undefined {
   return new Date(value).toISOString()
 }
 
+async function selectAndSaveDefaultProject(
+  command: Command,
+  projectId?: string
+): Promise<void> {
+  configureClient()
+
+  let selectedProject: Project | undefined
+
+  if (projectId) {
+    const { spinner, startedAt } = startSpinner("Fetching project...")
+    const result = await apiClient.get<ProjectResponse>(
+      `/api/projects/${projectId}`
+    )
+    await stopSpinner(spinner, startedAt)
+    selectedProject = result.project
+  } else {
+    const { spinner, startedAt } = startSpinner("Fetching projects...")
+    const result = await apiClient.get<ProjectListResponse>("/api/projects", {
+      limit: 100,
+    })
+    await stopSpinner(spinner, startedAt)
+
+    if (result.projects.length === 0) {
+      throw new ValidationError(
+        "No projects found. Create one with `pjfy projects create` first."
+      )
+    }
+
+    const selectedProjectId = await promptProjectSelect(
+      result.projects.map((project) => ({
+        id: project.id,
+        title: project.title,
+      })),
+      config.get("defaultProject")
+    )
+    selectedProject = result.projects.find(
+      (project) => project.id === selectedProjectId
+    )
+  }
+
+  if (!selectedProject) {
+    throw new ValidationError("Project not found")
+  }
+
+  config.set("defaultProject", selectedProject.id)
+  console.log(
+    chalk.green("✓"),
+    `Project in use: ${chalk.cyan(selectedProject.title)}`
+  )
+  console.log(chalk.dim(`ID: ${selectedProject.id}`))
+}
+
 export function createProjectsCommand(): Command {
-  const projects = new Command("projects").description("Manage projects").alias("proj")
+  const projects = new Command("projects")
+    .description("Manage projects")
+    .alias("proj")
+
+  projects.action(async (_, command) => {
+    try {
+      await selectAndSaveDefaultProject(command)
+    } catch (error) {
+      handleError(error, command.parent?.opts().verbose)
+    }
+  })
 
   projects
     .command("list")
@@ -50,14 +127,17 @@ export function createProjectsCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const spinner = ora("Fetching projects...").start()
+        const { spinner, startedAt } = startSpinner("Fetching projects...")
 
-        const result = await apiClient.get<ProjectListResponse>("/api/projects", {
-          status: options.status,
-          limit: Number.parseInt(options.limit, 10),
-        })
+        const result = await apiClient.get<ProjectListResponse>(
+          "/api/projects",
+          {
+            status: options.status,
+            limit: Number.parseInt(options.limit, 10),
+          }
+        )
 
-        spinner.stop()
+        await stopSpinner(spinner, startedAt)
 
         const globalOpts = command.parent?.opts() || {}
         const useJSON = options.json || globalOpts.json
@@ -71,9 +151,24 @@ export function createProjectsCommand(): Command {
           result.projects,
           [
             { key: "id", header: "ID", width: 20 },
-            { key: "title", header: "Title", width: 30, format: (v) => truncate(String(v), 28) },
-            { key: "status", header: "Status", width: 15, format: (v) => formatStatus(String(v), "project") },
-            { key: "dueDate", header: "Due Date", width: 15, format: (v) => formatDate(v as string | number | undefined) },
+            {
+              key: "title",
+              header: "Title",
+              width: 30,
+              format: (v) => truncate(String(v), 28),
+            },
+            {
+              key: "status",
+              header: "Status",
+              width: 15,
+              format: (v) => formatStatus(String(v), "project"),
+            },
+            {
+              key: "dueDate",
+              header: "Due Date",
+              width: 15,
+              format: (v) => formatDate(v as string | number | undefined),
+            },
           ],
           { noColor: globalOpts.noColor }
         )
@@ -88,7 +183,11 @@ export function createProjectsCommand(): Command {
     .description("Create a new project")
     .option("--title <title>", "Project title")
     .option("--description <desc>", "Project description")
-    .option("--status <status>", "Status (development/maintenance/inactive)", "development")
+    .option(
+      "--status <status>",
+      "Status (development/maintenance/inactive)",
+      "development"
+    )
     .option("--due-date <date>", "Due date (YYYY-MM-DD)")
     .option("--interactive", "Use interactive mode")
     .action(async (options, command) => {
@@ -112,19 +211,33 @@ export function createProjectsCommand(): Command {
           }
         } else {
           if (!options.title) {
-            throw new ValidationError("--title is required (or use --interactive)")
+            throw new ValidationError(
+              "--title is required (or use --interactive)"
+            )
           }
           projectData = {
             title: options.title,
             description: options.description,
-            status: options.status as "development" | "maintenance" | "inactive",
-            dueDate: options.dueDate ? new Date(options.dueDate).toISOString() : undefined,
+            status: options.status as
+              | "development"
+              | "maintenance"
+              | "inactive",
+            dueDate: options.dueDate
+              ? new Date(options.dueDate).toISOString()
+              : undefined,
           }
         }
 
-        const spinner = ora("Creating project...").start()
-        const result = await apiClient.post<ProjectResponse>("/api/projects", projectData)
-        spinner.succeed(chalk.green(`Project created: ${result.project.title}`))
+        const { spinner, startedAt } = startSpinner("Creating project...")
+        const result = await apiClient.post<ProjectResponse>(
+          "/api/projects",
+          projectData
+        )
+        await succeedSpinner(
+          spinner,
+          startedAt,
+          chalk.green(`Project created: ${result.project.title}`)
+        )
         console.log(chalk.dim(`ID: ${result.project.id}`))
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)
@@ -138,9 +251,11 @@ export function createProjectsCommand(): Command {
     .action(async (id, options, command) => {
       try {
         configureClient()
-        const spinner = ora("Fetching project...").start()
-        const result = await apiClient.get<ProjectResponse>(`/api/projects/${id}`)
-        spinner.stop()
+        const { spinner, startedAt } = startSpinner("Fetching project...")
+        const result = await apiClient.get<ProjectResponse>(
+          `/api/projects/${id}`
+        )
+        await stopSpinner(spinner, startedAt)
 
         const globalOpts = command.parent?.opts() || {}
         const useJSON = options.json || globalOpts.json
@@ -154,7 +269,10 @@ export function createProjectsCommand(): Command {
         console.log(chalk.bold("\nProject Details:\n"))
         console.log(chalk.cyan("Title:"), project.title)
         console.log(chalk.cyan("Description:"), project.description || "-")
-        console.log(chalk.cyan("Status:"), formatStatus(project.status, "project"))
+        console.log(
+          chalk.cyan("Status:"),
+          formatStatus(project.status, "project")
+        )
         console.log(chalk.cyan("Due Date:"), formatDate(project.dueDate))
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)
@@ -169,7 +287,12 @@ export function createProjectsCommand(): Command {
     .action(async (id, options, command) => {
       try {
         configureClient()
-        const projectResult = await apiClient.get<ProjectResponse>(`/api/projects/${id}`)
+        const { spinner: fetchSpinner, startedAt: fetchStartedAt } =
+          startSpinner("Fetching project...")
+        const projectResult = await apiClient.get<ProjectResponse>(
+          `/api/projects/${id}`
+        )
+        await stopSpinner(fetchSpinner, fetchStartedAt)
 
         if (!options.force) {
           const confirmed = await promptConfirm(
@@ -181,15 +304,24 @@ export function createProjectsCommand(): Command {
           }
         }
 
-        const spinner = ora("Deleting project...").start()
-        const result = await apiClient.delete<{ success: boolean; message?: string }>(
-          `/api/projects/${id}`
-        )
+        const { spinner, startedAt } = startSpinner("Deleting project...")
+        const result = await apiClient.delete<{
+          success: boolean
+          message?: string
+        }>(`/api/projects/${id}`)
 
         if (result.success) {
-          spinner.succeed(chalk.green(result.message || "Project deleted"))
+          await succeedSpinner(
+            spinner,
+            startedAt,
+            chalk.green(result.message || "Project deleted")
+          )
         } else {
-          spinner.fail(chalk.red("Project deletion failed"))
+          await failSpinner(
+            spinner,
+            startedAt,
+            chalk.red("Project deletion failed")
+          )
         }
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)
@@ -197,4 +329,21 @@ export function createProjectsCommand(): Command {
     })
 
   return projects
+}
+
+export function createProjectCommand(): Command {
+  const project = new Command("project").description("Set active project")
+
+  project
+    .command("use <id>")
+    .description("Set the default project by ID")
+    .action(async (id, _options, command) => {
+      try {
+        await selectAndSaveDefaultProject(command, id)
+      } catch (error) {
+        handleError(error, command.parent?.opts().verbose)
+      }
+    })
+
+  return project
 }

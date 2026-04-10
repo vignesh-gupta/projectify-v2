@@ -162,3 +162,25 @@ export async function promptSelect<T extends string>(
   ])
   return selected
 }
+
+/**
+ * Prompt for selecting a project from a list
+ */
+export async function promptProjectSelect(
+  projects: Array<{ id: string; title: string }>,
+  defaultProjectId?: string
+): Promise<string> {
+  const { selectedProjectId } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "selectedProjectId",
+      message: "Select a default project:",
+      choices: projects.map((project) => ({
+        name: `${project.title} (${project.id})`,
+        value: project.id,
+      })),
+      default: defaultProjectId,
+    },
+  ])
+  return selectedProjectId
+}
