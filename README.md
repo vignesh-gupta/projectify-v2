@@ -15,6 +15,7 @@ Welcome to Projectify, the ultimate project management tool designed specificall
 - [x] ⭐**Improve with Feedbacks** : Gather feedback from your team or stakeholders and convert them directly into actionable work items.
 - [x] 📃**Changelog** : Maintain a changelog for projects and integrate it seamlessly with your website to keep users updated on changes.
 - [x] 💬**Simple Group Messaging** : Communicate with your team effortlessly using our built-in group messaging feature.
+- [x] 🖥️**Command-Line Interface (CLI)** : Manage projects and tasks from the terminal with `pjfy` CLI tool.
 - [x] 🎁 many more...
 
 ## Tech Stack
@@ -41,6 +42,40 @@ Welcome to Projectify, the ultimate project management tool designed specificall
 - [TypeScript](https://www.typescriptlang.org/) – Static type checker for end-to-end type-safety
 - [Prettier](https://prettier.io/) – Opinionated code formatter for consistent code style
 - [ESLint](https://eslint.org/) – Pluggable linter for Next.js & TypeScript
+
+## Command-Line Interface (CLI)
+
+Projectify includes a powerful CLI tool for managing your projects and tasks from the terminal.
+
+### Installation
+
+```bash
+# Install globally (when published to npm)
+npm install -g @projectify/cli
+
+# Or build from source
+cd apps/cli
+pnpm build
+npm link
+```
+
+### Quick Start
+
+```bash
+# Authenticate
+pjfy auth login
+
+# List projects
+pjfy projects list
+
+# Create a task
+pjfy tasks create --project <project-id> --interactive
+
+# Get help
+pjfy --help
+```
+
+For complete CLI documentation, see [CLI-PRD.md](./CLI-PRD.md).
 
 ## Contributing
 

@@ -9,7 +9,9 @@ function normalizeEmail(email: string) {
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
-    GitHub,
+    GitHub({
+      issuer: "https://github.com/login/oauth",
+    }),
     Password({
       profile(params) {
         const email = normalizeEmail(String(params.email ?? ""))
