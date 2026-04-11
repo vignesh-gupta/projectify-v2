@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { authenticateApiKey, requireProjectMembership, requireScope } from "./lib/apiKeyAuth"
 
 /**
  * Generate upload URL for file upload
@@ -445,5 +446,169 @@ export const searchResources = query({
     )
 
     return resourcesWithPath
+  },
+})
+
+export const generateUploadUrlByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:write")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+export const createFileByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    name: v.string(),
+    storageId: v.id("_storage"),
+    fileType: v.string(),
+    fileSize: v.number(),
+    folderId: v.optional(v.id("folders")),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:write")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const now = Date.now()
+    const resourceId = await ctx.db.insert("resources", {
+      projectId: args.projectId,
+      type: "file",
+      name: args.name,
+      storageId: args.storageId,
+      fileType: args.fileType,
+      fileSize: args.fileSize,
+      folderId: args.folderId,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: auth.userId,
+    })
+
+    const resource = await ctx.db.get(resourceId)
+    if (!resource) {
+      throw new Error("Failed to create resource")
+    }
+
+    return {
+      resource: {
+        id: resource._id,
+        projectId: resource.projectId,
+        type: resource.type,
+        name: resource.name,
+        storageId: resource.storageId,
+        fileType: resource.fileType,
+        fileSize: resource.fileSize,
+        folderId: resource.folderId,
+        createdAt: resource.createdAt,
+        updatedAt: resource.updatedAt,
+      },
+    }
+  },
+})
+
+export const createLinkByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    name: v.string(),
+    url: v.string(),
+    favicon: v.optional(v.string()),
+    folderId: v.optional(v.id("folders")),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:write")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const now = Date.now()
+    const resourceId = await ctx.db.insert("resources", {
+      projectId: args.projectId,
+      type: "link",
+      name: args.name,
+      url: args.url,
+      favicon: args.favicon,
+      folderId: args.folderId,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: auth.userId,
+    })
+
+    const resource = await ctx.db.get(resourceId)
+    if (!resource) {
+      throw new Error("Failed to create resource")
+    }
+
+    return {
+      resource: {
+        id: resource._id,
+        projectId: resource.projectId,
+        type: resource.type,
+        name: resource.name,
+        url: resource.url,
+        favicon: resource.favicon,
+        folderId: resource.folderId,
+        createdAt: resource.createdAt,
+        updatedAt: resource.updatedAt,
+      },
+    }
+  },
+})
+
+export const listByApiKey = query({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    type: v.optional(v.union(v.literal("file"), v.literal("link"))),
+    folderId: v.optional(v.id("folders")),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:read")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    let resources = await ctx.db
+      .query("resources")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+
+    if (args.type) {
+      resources = resources.filter((resource) => resource.type === args.type)
+    }
+    if (args.folderId) {
+      resources = resources.filter((resource) => resource.folderId === args.folderId)
+    }
+
+    const sorted = resources.sort((a, b) => b.updatedAt - a.updatedAt)
+    const offset = Math.max(0, args.offset ?? 0)
+    const limit = Math.max(1, Math.min(1000, args.limit ?? 50))
+    const paginated = sorted.slice(offset, offset + limit)
+
+    return {
+      resources: paginated.map((resource) => ({
+        id: resource._id,
+        projectId: resource.projectId,
+        type: resource.type,
+        name: resource.name,
+        url: resource.url,
+        storageId: resource.storageId,
+        fileType: resource.fileType,
+        fileSize: resource.fileSize,
+        favicon: resource.favicon,
+        folderId: resource.folderId,
+        createdAt: resource.createdAt,
+        updatedAt: resource.updatedAt,
+      })),
+      total: sorted.length,
+    }
   },
 })

@@ -1,15 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
-import { ConvexHttpClient } from "convex/browser"
-import type { Id } from "@/convex/_generated/dataModel"
 import { api } from "@/convex/_generated/api"
-
-function getConvexClient() {
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
-  if (!convexUrl) {
-    throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured")
-  }
-  return new ConvexHttpClient(convexUrl)
-}
+import type { Id } from "@/convex/_generated/dataModel"
+import { getConvexClient } from "@/convex/lib/client"
+import { NextRequest, NextResponse } from "next/server"
 
 function getBearerToken(request: NextRequest): string | null {
   const authHeader = request.headers.get("authorization")

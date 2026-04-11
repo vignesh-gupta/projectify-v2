@@ -133,6 +133,58 @@ pjfy tasks assign <id> <userId>
 pjfy tasks delete <id> [--force]
 ```
 
+### Feedback
+
+```bash
+# List feedback
+pjfy feedback list --project <id> [--category <category>] [--status <status>] [--limit <n>] [--json]
+
+# Create feedback
+pjfy feedback create --project <id> --title "Login issue" --description "Steps to reproduce..." [--category bug]
+pjfy feedback create --project <id> --interactive
+
+# Vote on feedback
+pjfy feedback vote <id>
+```
+
+### Changelog
+
+```bash
+# List changelog entries
+pjfy changelog list --project <id> [--status <status>] [--limit <n>] [--json]
+
+# Create changelog draft
+pjfy changelog create --project <id> --version 1.2.0 --title "April Release" --content "Shipped task improvements"
+pjfy changelog create --project <id> --interactive
+
+# Publish changelog draft
+pjfy changelog publish <id>
+```
+
+### Resources
+
+```bash
+# List resources
+pjfy resources list --project <id> [--type file|link] [--folder <id>] [--limit <n>] [--json]
+
+# Upload file resource
+pjfy resources upload ./design.pdf --project <id> [--name "Design PDF"] [--folder <id>]
+
+# Add link resource
+pjfy resources add-link --project <id> --name "Figma" --url "https://figma.com/..."
+```
+
+### Messages
+
+```bash
+# List recent messages
+pjfy messages list --project <id> [--limit <n>] [--json]
+
+# Send a message
+pjfy messages send --project <id> --content "Meeting at 3pm" [--thread <messageId>]
+pjfy messages send --project <id> --interactive
+```
+
 ## Global Options
 
 Available for all commands:
@@ -219,8 +271,10 @@ The CLI uses user API keys for authentication. To generate an API key:
 1. Visit your Projectify web app settings
 2. Navigate to Settings → API Keys
 3. Generate a new API key with required scopes:
-   - `projects:read`, `projects:write`
-   - `tasks:read`, `tasks:write`
+    - `projects:read`, `projects:write`
+    - `tasks:read`, `tasks:write`
+    - `feedback:read`, `feedback:write`
+    - `changelog:read`, `changelog:write`
 4. Copy the key and paste it when running `pjfy auth login`
 
 API keys are stored securely in your config file. Never commit your config file to version control!

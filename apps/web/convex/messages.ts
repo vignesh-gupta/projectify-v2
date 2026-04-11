@@ -4,6 +4,7 @@ import { mutation, query, type MutationCtx } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
+import { authenticateApiKey, requireProjectMembership, requireScope } from "./lib/apiKeyAuth"
 
 const MENTION_PATTERN = /@(\w+(?:\s+\w+)?)/g
 
@@ -639,5 +640,119 @@ export const markAsRead = mutation({
     }
 
     return { success: true }
+  },
+})
+
+export const listByApiKey = query({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:read")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_project_created", (q) => q.eq("projectId", args.projectId))
+      .filter((q) => q.eq(q.field("deletedAt"), undefined))
+      .filter((q) => q.eq(q.field("threadId"), undefined))
+      .collect()
+
+    const sorted = messages.sort((a, b) => b.createdAt - a.createdAt)
+    const offset = Math.max(0, args.offset ?? 0)
+    const limit = Math.max(1, Math.min(1000, args.limit ?? 20))
+    const paginated = sorted.slice(offset, offset + limit)
+
+    const enriched = await Promise.all(
+      paginated.map(async (message) => {
+        const author = await ctx.db.get(message.authorId)
+        return {
+          id: message._id,
+          projectId: message.projectId,
+          authorId: message.authorId,
+          content: message.content,
+          threadId: message.threadId,
+          attachments: message.attachments,
+          reactions: message.reactions,
+          createdAt: message.createdAt,
+          updatedAt: message.updatedAt,
+          author: author
+            ? {
+                _id: author._id,
+                name: author.name ?? null,
+                email: author.email ?? "",
+                image: author.image,
+              }
+            : null,
+        }
+      })
+    )
+
+    return {
+      messages: enriched,
+      total: sorted.length,
+    }
+  },
+})
+
+export const sendByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    content: v.string(),
+    threadId: v.optional(v.id("messages")),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:write")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const content = args.content.trim()
+    if (!content) {
+      throw new Error("Message content is required")
+    }
+
+    if (args.threadId) {
+      const parent = await ctx.db.get(args.threadId)
+      if (!parent) {
+        throw new Error("Parent message not found")
+      }
+      if (parent.projectId !== args.projectId) {
+        throw new Error("Parent message belongs to different project")
+      }
+    }
+
+    const messageId = await ctx.db.insert("messages", {
+      projectId: args.projectId,
+      authorId: auth.userId,
+      content,
+      threadId: args.threadId,
+      attachments: undefined,
+      reactions: [],
+      createdAt: Date.now(),
+    })
+
+    const message = await ctx.db.get(messageId)
+    if (!message) {
+      throw new Error("Failed to send message")
+    }
+
+    return {
+      message: {
+        id: message._id,
+        projectId: message.projectId,
+        authorId: message.authorId,
+        content: message.content,
+        threadId: message.threadId,
+        attachments: message.attachments,
+        reactions: message.reactions,
+        createdAt: message.createdAt,
+        updatedAt: message.updatedAt,
+      },
+    }
   },
 })

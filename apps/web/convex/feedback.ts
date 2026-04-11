@@ -2,6 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server"
 import { Id } from "./_generated/dataModel"
+import { authenticateApiKey, requireScope } from "./lib/apiKeyAuth"
 
 const feedbackStatusValidator = v.union(
   v.literal("new"),
@@ -545,5 +546,183 @@ export const addComment = mutation({
       content: normalizedContent,
       createdAt: now,
     })
+  },
+})
+
+export const listByApiKey = query({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    status: v.optional(feedbackStatusValidator),
+    category: v.optional(feedbackCategoryValidator),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "feedback:read")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    let feedbackList = args.status
+      ? await ctx.db
+          .query("feedback")
+          .withIndex("by_project_status", (q) =>
+            q.eq("projectId", args.projectId).eq("status", args.status!)
+          )
+          .collect()
+      : await ctx.db
+          .query("feedback")
+          .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+          .collect()
+
+    if (args.category) {
+      feedbackList = feedbackList.filter((item) => item.category === args.category)
+    }
+
+    const votesByUser = await ctx.db
+      .query("feedbackVotes")
+      .withIndex("by_user", (q) => q.eq("userId", auth.userId))
+      .collect()
+    const votedSet = new Set(votesByUser.map((vote) => vote.feedbackId))
+
+    const sorted = feedbackList.sort((a, b) => b.createdAt - a.createdAt)
+    const offset = Math.max(0, args.offset ?? 0)
+    const limit = Math.max(1, Math.min(1000, args.limit ?? 50))
+    const paginated = sorted.slice(offset, offset + limit)
+
+    return {
+      feedback: paginated.map((item) => ({
+        id: item._id,
+        projectId: item.projectId,
+        title: item.title,
+        description: item.description,
+        category: item.category,
+        status: item.status,
+        votes: item.votes,
+        isPublic: item.isPublic,
+        linkedTaskId: item.linkedTaskId,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        hasVoted: votedSet.has(item._id),
+      })),
+      total: sorted.length,
+    }
+  },
+})
+
+export const createByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    title: v.string(),
+    description: v.string(),
+    category: feedbackCategoryValidator,
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "feedback:write")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const title = args.title.trim()
+    const description = args.description.trim()
+    if (!title) {
+      throw new Error("Title is required")
+    }
+    if (!description) {
+      throw new Error("Description is required")
+    }
+
+    const now = Date.now()
+    const feedbackId = await ctx.db.insert("feedback", {
+      projectId: args.projectId,
+      title,
+      description,
+      category: args.category,
+      status: "new",
+      votes: 0,
+      isPublic: false,
+      createdBy: auth.userId,
+      submitterName: undefined,
+      submitterEmail: undefined,
+      anonymousId: undefined,
+      linkedTaskId: undefined,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    const feedback = await ctx.db.get(feedbackId)
+    if (!feedback) {
+      throw new Error("Failed to create feedback")
+    }
+
+    return {
+      feedback: {
+        id: feedback._id,
+        projectId: feedback.projectId,
+        title: feedback.title,
+        description: feedback.description,
+        category: feedback.category,
+        status: feedback.status,
+        votes: feedback.votes,
+        isPublic: feedback.isPublic,
+        linkedTaskId: feedback.linkedTaskId,
+        createdAt: feedback.createdAt,
+        updatedAt: feedback.updatedAt,
+        hasVoted: false,
+      },
+    }
+  },
+})
+
+export const voteByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    feedbackId: v.id("feedback"),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "feedback:write")
+
+    const feedback = await ctx.db.get(args.feedbackId)
+    if (!feedback) {
+      throw new Error("Feedback not found")
+    }
+
+    await requireProjectMembership(ctx, feedback.projectId, auth.userId)
+
+    const existingVote = await ctx.db
+      .query("feedbackVotes")
+      .withIndex("by_feedback_user", (q) =>
+        q.eq("feedbackId", args.feedbackId).eq("userId", auth.userId)
+      )
+      .first()
+
+    if (existingVote) {
+      await ctx.db.delete(existingVote._id)
+    } else {
+      await ctx.db.insert("feedbackVotes", {
+        feedbackId: args.feedbackId,
+        userId: auth.userId,
+        anonymousId: undefined,
+        createdAt: Date.now(),
+      })
+    }
+
+    const votes = await ctx.db
+      .query("feedbackVotes")
+      .withIndex("by_feedback", (q) => q.eq("feedbackId", args.feedbackId))
+      .collect()
+
+    const nextVotes = votes.length
+    await ctx.db.patch(args.feedbackId, {
+      votes: nextVotes,
+      updatedAt: Date.now(),
+    })
+
+    return {
+      feedbackId: args.feedbackId,
+      votes: nextVotes,
+      voted: !existingVote,
+    }
   },
 })

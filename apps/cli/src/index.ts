@@ -3,7 +3,11 @@
 import { Command } from "commander"
 import chalk from "chalk"
 import { createAuthCommand } from "./commands/auth.js"
+import { createChangelogCommand } from "./commands/changelog.js"
 import { createProjectCommand, createProjectsCommand } from "./commands/projects.js"
+import { createFeedbackCommand } from "./commands/feedback.js"
+import { createMessagesCommand } from "./commands/messages.js"
+import { createResourcesCommand } from "./commands/resources.js"
 import { createTasksCommand } from "./commands/tasks.js"
 import { createConfigCommand } from "./commands/config.js"
 
@@ -27,6 +31,10 @@ program.addCommand(createConfigCommand())
 program.addCommand(createProjectsCommand())
 program.addCommand(createProjectCommand())
 program.addCommand(createTasksCommand())
+program.addCommand(createFeedbackCommand())
+program.addCommand(createChangelogCommand())
+program.addCommand(createResourcesCommand())
+program.addCommand(createMessagesCommand())
 
 // Help text
 program.addHelpText(

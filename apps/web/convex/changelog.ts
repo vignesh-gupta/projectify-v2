@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server"
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
+import type { Doc, Id } from "./_generated/dataModel"
 import {
   action,
   internalMutation,
@@ -10,7 +11,10 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server"
-import type { Doc, Id } from "./_generated/dataModel"
+import {
+  authenticateApiKey as authenticateUserApiKey,
+  requireScope,
+} from "./lib/apiKeyAuth"
 
 const semverPattern = /^\d+\.\d+\.\d+$/
 
@@ -96,7 +100,11 @@ export const listByProject = query({
       throw new Error("Unauthorized")
     }
 
-    const membership = await requireProjectMembership(ctx, args.projectId, userId)
+    const membership = await requireProjectMembership(
+      ctx,
+      args.projectId,
+      userId
+    )
     const project = await ctx.db.get(args.projectId)
 
     const entries = await ctx.db
@@ -353,7 +361,11 @@ export const getPublishedEntry = query({
   },
   handler: async (ctx, args) => {
     const entry = await ctx.db.get(args.changelogId)
-    if (!entry || entry.projectId !== args.projectId || entry.status !== "published") {
+    if (
+      !entry ||
+      entry.projectId !== args.projectId ||
+      entry.status !== "published"
+    ) {
       throw new Error("Published changelog entry not found")
     }
 
@@ -380,7 +392,11 @@ export const listApiKeys = query({
       throw new Error("Unauthorized")
     }
 
-    const membership = await requireProjectMembership(ctx, args.projectId, userId)
+    const membership = await requireProjectMembership(
+      ctx,
+      args.projectId,
+      userId
+    )
     if (membership.role === "member") {
       return []
     }
@@ -389,9 +405,7 @@ export const listApiKeys = query({
       .query("apiKeys")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect()
-      .then((items) =>
-        items.sort((a, b) => b.createdAt - a.createdAt)
-      )
+      .then((items) => items.sort((a, b) => b.createdAt - a.createdAt))
   },
 })
 
@@ -477,7 +491,11 @@ export const listWebhooks = query({
       throw new Error("Unauthorized")
     }
 
-    const membership = await requireProjectMembership(ctx, args.projectId, userId)
+    const membership = await requireProjectMembership(
+      ctx,
+      args.projectId,
+      userId
+    )
     if (membership.role === "member") {
       return []
     }
@@ -584,7 +602,11 @@ export const listWebhookDeliveries = query({
       throw new Error("Unauthorized")
     }
 
-    const membership = await requireProjectMembership(ctx, args.projectId, userId)
+    const membership = await requireProjectMembership(
+      ctx,
+      args.projectId,
+      userId
+    )
     if (membership.role === "member") {
       return []
     }
@@ -594,9 +616,7 @@ export const listWebhookDeliveries = query({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect()
 
-    return deliveries
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, 20)
+    return deliveries.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20)
   },
 })
 
@@ -740,5 +760,190 @@ export const recordWebhookDelivery = internalMutation({
       lastDeliveryStatus: args.status,
       updatedAt: now,
     })
+  },
+})
+
+export const listByApiKey = query({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateUserApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "changelog:read")
+    await requireProjectMembership(ctx, args.projectId, auth.userId)
+
+    const entries = await ctx.db
+      .query("changelog")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect()
+
+    const filtered = args.status
+      ? entries.filter((entry) => entry.status === args.status)
+      : entries
+
+    const sorted = filtered.sort((a, b) => {
+      const left = a.publishedAt ?? a.updatedAt
+      const right = b.publishedAt ?? b.updatedAt
+      return right - left
+    })
+
+    const offset = Math.max(0, args.offset ?? 0)
+    const limit = Math.max(1, Math.min(1000, args.limit ?? 50))
+    const paginated = sorted.slice(offset, offset + limit)
+
+    const serialized = await Promise.all(
+      paginated.map(async (entry) => {
+        const enriched = await enrichAuthor(ctx, entry)
+        return {
+          id: enriched._id,
+          projectId: enriched.projectId,
+          version: enriched.version,
+          title: enriched.title,
+          content: enriched.content,
+          status: enriched.status,
+          publishedAt: enriched.publishedAt,
+          createdAt: enriched.createdAt,
+          updatedAt: enriched.updatedAt,
+          author: enriched.author,
+        }
+      })
+    )
+
+    return { entries: serialized, total: sorted.length }
+  },
+})
+
+export const createDraftByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    version: v.string(),
+    title: v.string(),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateUserApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "changelog:write")
+    await requireProjectAdmin(ctx, args.projectId, auth.userId)
+
+    const version = args.version.trim()
+    const title = args.title.trim()
+    const content = normalizeHtmlContent(args.content)
+
+    assertSemver(version)
+    if (!title) {
+      throw new Error("Title is required")
+    }
+    if (!content) {
+      throw new Error("Content is required")
+    }
+
+    const existingPublished = await ctx.db
+      .query("changelog")
+      .withIndex("by_project_version", (q) =>
+        q.eq("projectId", args.projectId).eq("version", version)
+      )
+      .filter((q) => q.eq(q.field("status"), "published"))
+      .first()
+
+    if (existingPublished) {
+      throw new Error("This version has already been published")
+    }
+
+    const now = Date.now()
+    const changelogId = await ctx.db.insert("changelog", {
+      projectId: args.projectId,
+      version,
+      title,
+      content,
+      status: "draft",
+      publishedAt: undefined,
+      createdBy: auth.userId,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    const entry = await ctx.db.get(changelogId)
+    if (!entry) {
+      throw new Error("Failed to create changelog entry")
+    }
+
+    return {
+      entry: {
+        id: entry._id,
+        projectId: entry.projectId,
+        version: entry.version,
+        title: entry.title,
+        content: entry.content,
+        status: entry.status,
+        publishedAt: entry.publishedAt,
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt,
+      },
+    }
+  },
+})
+
+export const publishByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    changelogId: v.id("changelog"),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateUserApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "changelog:write")
+
+    const entry = await ctx.db.get(args.changelogId)
+    if (!entry) {
+      throw new Error("Changelog entry not found")
+    }
+    if (entry.status !== "draft") {
+      throw new Error("Only draft entries can be published")
+    }
+
+    await requireProjectAdmin(ctx, entry.projectId, auth.userId)
+    assertSemver(entry.version)
+
+    const conflictingPublished = await ctx.db
+      .query("changelog")
+      .withIndex("by_project_version", (q) =>
+        q.eq("projectId", entry.projectId).eq("version", entry.version)
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "published"),
+          q.neq(q.field("_id"), args.changelogId)
+        )
+      )
+      .first()
+
+    if (conflictingPublished) {
+      throw new Error("This version has already been published")
+    }
+
+    const publishedAt = Date.now()
+    await ctx.db.patch(args.changelogId, {
+      status: "published",
+      publishedAt,
+      updatedAt: publishedAt,
+    })
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.changelogWebhook.deliverPublishedWebhook,
+      {
+        changelogId: args.changelogId,
+      }
+    )
+
+    return {
+      changelogId: args.changelogId,
+      status: "published" as const,
+      publishedAt,
+    }
   },
 })

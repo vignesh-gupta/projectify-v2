@@ -32,10 +32,10 @@ This file tracks CLI progress against `apps/cli/CLI-PRD.md` using the current im
 | Tasks | `tasks update <id>` | **Done** | Implemented with assignee updates and other partial-field updates. |
 | Tasks | `tasks assign <id> <userId>` | **Done** | Implemented as explicit assignment command. |
 | Tasks | `tasks delete <id>` | **Done** | Implemented with confirmation + `--force`. |
-| Feedback | `feedback *` command set | **Pending** | Not implemented. |
-| Changelog | `changelog *` command set | **Pending** | Not implemented. |
-| Resources | `resources *` command set | **Pending** | Not implemented. |
-| Messages | `messages *` command set | **Pending** | Not implemented. |
+| Feedback | `feedback *` command set | **Done** | Implemented: `list`, `create`, `vote`. |
+| Changelog | `changelog *` command set | **Done** | Implemented: `list`, `create`, `publish`. |
+| Resources | `resources *` command set | **Done** | Implemented: `list`, `upload`, `add-link`. |
+| Messages | `messages *` command set | **Done** | Implemented: `list`, `send`. |
 | Config | `config set/get/list` | **Done** | Implemented with local/global support. |
 | Global flags | `--json`, `--no-color`, `--project`, `--verbose` | **Done** | Declared globally and `--project` precedence is normalized for project-scoped task commands. |
 | Error model | Auth/network/validation/resource friendly errors | **Partial** | Friendly mapping improved (scope/expired/invalid key, required fields, timeout, permission), with room for deeper backend-specific refinement. |
@@ -50,15 +50,15 @@ This file tracks CLI progress against `apps/cli/CLI-PRD.md` using the current im
 3. Config system with global/local precedence.
 4. Project operations (`list`, `create`, `get`, `update`, `delete`) and active-project selection (`projects`, `project use`).
 5. Task operations (`list`, `create`, `get`, `update`, `assign`, `delete`) with assignee option support.
-6. UX helpers: colors, tables, prompts, spinners, JSON output.
+6. Feedback operations (`list`, `create`, `vote`) with filters and interactive create mode.
+7. Changelog operations (`list`, `create`, `publish`) with draft publish workflow.
+8. Resource operations (`list`, `upload`, `add-link`) including file upload flow.
+9. Message operations (`list`, `send`) with optional thread replies.
+10. UX helpers: colors, tables, prompts, spinners, JSON output.
 
 ## Pending features (for PRD parity)
-1. Full `feedback` command group.
-2. Full `changelog` command group.
-3. Full `resources` command group.
-4. Full `messages` command group.
-5. Standalone binary builds + release assets.
-6. CLI test coverage (unit/integration/E2E) and release automation.
+1. Standalone binary builds + release assets.
+2. CLI test coverage (unit/integration/E2E) and release automation.
 
 ## Good-to-have features (Proposed)
 1. Shell completion generation (`bash`, `zsh`, `fish`, PowerShell).
@@ -82,10 +82,10 @@ This file tracks CLI progress against `apps/cli/CLI-PRD.md` using the current im
 - ⏳ Tighten PRD-aligned error messaging coverage (partially improved; further refinement possible).
 
 ### Phase 2 - Extended PRD command groups
-- Implement `feedback` commands (`list/create/vote`, then full CRUD if required by backend).
-- Implement `changelog` commands (`list/create/publish`).
-- Implement `resources` commands (`list/upload/add-link`).
-- Implement `messages` commands (`list/send`).
+- ✅ Implemented `feedback` commands (`list/create/vote`).
+- ✅ Implemented `changelog` commands (`list/create/publish`).
+- ✅ Implemented `resources` commands (`list/upload/add-link`).
+- ✅ Implemented `messages` commands (`list/send`).
 
 ### Phase 3 - Release hardening
 - Add CLI-focused tests (unit + integration + smoke E2E).

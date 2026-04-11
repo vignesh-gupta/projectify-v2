@@ -1,14 +1,14 @@
 /**
  * API Authentication Middleware for User API Keys
- * 
+ *
  * This module provides helpers to authenticate API requests using user API keys.
  * Supports both Authorization: Bearer <key> and x-api-key: <key> headers.
  */
 
-import { NextRequest } from "next/server"
-import { getConvexHttpClient } from "@/lib/changelog-api"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
+import { getConvexClient } from "@/convex/lib/client"
+import { NextRequest } from "next/server"
 
 export type ApiAuthResult =
   | {
@@ -52,7 +52,7 @@ export function extractApiKey(request: NextRequest): string | null {
 export async function authenticateApiKey(
   apiKey: string
 ): Promise<ApiAuthResult> {
-  const convex = getConvexHttpClient()
+  const convex = getConvexClient()
 
   try {
     const result = await convex.action(api.userApiKeys.authenticateUserApiKey, {
@@ -108,7 +108,7 @@ export function hasAllScopes(
 
 /**
  * Full middleware function to authenticate and validate scopes
- * 
+ *
  * Usage:
  * ```ts
  * const auth = await authenticateRequest(request, ["changelog:read"])
@@ -127,7 +127,8 @@ export async function authenticateRequest(
   if (!apiKey) {
     return {
       authenticated: false,
-      error: "Missing API key. Provide via Authorization header or x-api-key header.",
+      error:
+        "Missing API key. Provide via Authorization header or x-api-key header.",
     }
   }
 
