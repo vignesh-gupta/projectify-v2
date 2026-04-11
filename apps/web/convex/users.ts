@@ -48,6 +48,58 @@ export const updateProfile = mutation({
 })
 
 /**
+ * Generate upload URL for profile image upload
+ */
+export const generateProfileImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+/**
+ * Update current user's profile image.
+ * Accepts either a storageId (Convex upload) or direct imageUrl.
+ */
+export const updateProfileImage = mutation({
+  args: {
+    storageId: v.optional(v.id("_storage")),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx)
+    if (!userId) {
+      throw new Error("Unauthorized")
+    }
+
+    if (!args.storageId && !args.imageUrl) {
+      throw new Error("Either storageId or imageUrl is required")
+    }
+
+    let finalImageUrl = args.imageUrl
+    if (args.storageId) {
+      const storageUrl = await ctx.storage.getUrl(args.storageId)
+      if (!storageUrl) {
+        throw new Error("Uploaded image is no longer available")
+      }
+      finalImageUrl = storageUrl
+    }
+
+    if (!finalImageUrl) {
+      throw new Error("Failed to resolve profile image URL")
+    }
+
+    await ctx.db.patch(userId, { image: finalImageUrl })
+    return { image: finalImageUrl }
+  },
+})
+
+/**
  * Leave a specific project
  */
 export const leaveProject = mutation({

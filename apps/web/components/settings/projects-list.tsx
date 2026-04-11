@@ -4,7 +4,13 @@ import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Button } from "@workspace/ui/components/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +29,10 @@ function ProjectsListSkeleton() {
   return (
     <div className="space-y-4">
       {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between rounded-lg border border-border p-4">
+        <div
+          key={i}
+          className="flex items-center justify-between rounded-lg border border-border p-4"
+        >
           <div className="space-y-2">
             <div className="h-5 w-48 animate-pulse bg-muted" />
             <div className="h-4 w-32 animate-pulse bg-muted" />
@@ -37,7 +46,7 @@ function ProjectsListSkeleton() {
 
 function ProjectsListEmpty() {
   return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-8 text-center">
+    <div className="flex min-h-50 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-8 text-center">
       <Users className="size-12 text-muted-foreground" />
       <h3 className="mt-4 text-lg font-semibold text-foreground">
         No projects yet
@@ -96,7 +105,9 @@ export function ProjectsList() {
 
     try {
       const result = await leaveAllProjects()
-      toast.success(`Left ${result.count} project${result.count !== 1 ? "s" : ""} successfully!`)
+      toast.success(
+        `Left ${result.count} project${result.count !== 1 ? "s" : ""} successfully!`
+      )
       setLeaveAllDialogOpen(false)
     } catch (error) {
       console.error("Failed to leave all projects:", error)
@@ -167,7 +178,7 @@ export function ProjectsList() {
               {projects.map((project) => (
                 <div
                   key={project._id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
+                  className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/30"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
@@ -186,9 +197,14 @@ export function ProjectsList() {
                       </span>
                     </div>
                     <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{project.memberCount} member{project.memberCount !== 1 ? "s" : ""}</span>
+                      <span>
+                        {project.memberCount} member
+                        {project.memberCount !== 1 ? "s" : ""}
+                      </span>
                       <span>•</span>
-                      <span className="line-clamp-1">{project.description}</span>
+                      <span className="line-clamp-1">
+                        {project.description}
+                      </span>
                     </div>
                   </div>
                   <Button
@@ -212,11 +228,14 @@ export function ProjectsList() {
           <AlertDialogHeader>
             <AlertDialogTitle>Leave Project?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to leave &quot;{selectedProject?.title}&quot;?
-              {projects?.find((p) => p._id === selectedProject?.id)?.role === "owner" && (
+              Are you sure you want to leave &quot;{selectedProject?.title}
+              &quot;?
+              {projects?.find((p) => p._id === selectedProject?.id)?.role ===
+                "owner" && (
                 <span className="mt-2 block text-warning">
                   <AlertTriangle className="mr-1 inline size-4" />
-                  You are an owner of this project. You may need to transfer ownership first.
+                  You are an owner of this project. You may need to transfer
+                  ownership first.
                 </span>
               )}
             </AlertDialogDescription>
@@ -226,7 +245,7 @@ export function ProjectsList() {
             <AlertDialogAction
               onClick={handleLeaveProject}
               disabled={isLeaving}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
             >
               {isLeaving && <Loader2 className="mr-2 size-4 animate-spin" />}
               Leave Project
@@ -236,17 +255,21 @@ export function ProjectsList() {
       </AlertDialog>
 
       {/* Leave All Projects Dialog */}
-      <AlertDialog open={leaveAllDialogOpen} onOpenChange={setLeaveAllDialogOpen}>
+      <AlertDialog
+        open={leaveAllDialogOpen}
+        onOpenChange={setLeaveAllDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Leave All Projects?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to leave all {projects?.length} project{projects?.length !== 1 ? "s" : ""}?
-              This action cannot be undone.
+              Are you sure you want to leave all {projects?.length} project
+              {projects?.length !== 1 ? "s" : ""}? This action cannot be undone.
               {projects?.some((p) => p.role === "owner") && (
                 <span className="mt-2 block text-warning">
                   <AlertTriangle className="mr-1 inline size-4" />
-                  You are an owner of some projects. You may need to transfer ownership first.
+                  You are an owner of some projects. You may need to transfer
+                  ownership first.
                 </span>
               )}
             </AlertDialogDescription>
@@ -256,7 +279,7 @@ export function ProjectsList() {
             <AlertDialogAction
               onClick={handleLeaveAll}
               disabled={isLeaving}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
             >
               {isLeaving && <Loader2 className="mr-2 size-4 animate-spin" />}
               Leave All Projects

@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { useQuery, useMutation } from "convex/react"
+import { useEffect, useRef, useState } from "react"
+import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Id } from "@/convex/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -24,18 +25,87 @@ import { Loader2, User } from "lucide-react"
 export function AccountSettings() {
   const user = useQuery(api.auth.currentUser)
   const updateProfile = useMutation(api.users.updateProfile)
+  const generateProfileImageUploadUrl = useMutation(
+    api.users.generateProfileImageUploadUrl
+  )
+  const updateProfileImage = useMutation(api.users.updateProfileImage)
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [hasInitializedForm, setHasInitializedForm] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
-  // Initialize form when user data loads
   const isLoading = user === undefined
-  const initialized = user && !name && !email
 
-  if (initialized) {
+  useEffect(() => {
+    if (!user || hasInitializedForm) {
+      return
+    }
+
     setName(user.name || "")
     setEmail(user.email || "")
+    setHasInitializedForm(true)
+  }, [user, hasInitializedForm])
+
+  const handleProfileImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file")
+      event.target.value = ""
+      return
+    }
+
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      toast.error("Image size must be 5MB or less")
+      event.target.value = ""
+      return
+    }
+
+    setIsUploadingImage(true)
+
+    try {
+      const uploadUrl = await generateProfileImageUploadUrl()
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to upload profile image")
+      }
+
+      const { storageId } = (await response.json()) as {
+        storageId?: Id<"_storage">
+      }
+      if (!storageId) {
+        throw new Error("Upload did not return a storageId")
+      }
+
+      await updateProfileImage({ storageId })
+      toast.success("Profile picture updated successfully!")
+    } catch (error) {
+      console.error("Failed to update profile picture:", error)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update profile picture. Please try again."
+      )
+    } finally {
+      setIsUploadingImage(false)
+      event.target.value = ""
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -140,14 +210,25 @@ export function AccountSettings() {
             <div>
               <h3 className="font-medium text-foreground">{name || "User"}</h3>
               <p className="text-sm text-muted-foreground">{email}</p>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleProfileImageChange}
+              />
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="mt-2"
-                disabled
+                disabled={isUploadingImage || isSubmitting}
+                onClick={() => imageInputRef.current?.click()}
               >
-                Change Photo (Coming Soon)
+                {isUploadingImage && (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                )}
+                {isUploadingImage ? "Uploading..." : "Change Photo"}
               </Button>
             </div>
           </div>

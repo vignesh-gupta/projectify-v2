@@ -39,11 +39,17 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   },
   callbacks: {
     redirect: async ({ redirectTo }) => {
-      console.log({
-        redirectTo,
-      })
+      const siteUrl = process.env.SITE_URL
 
-      return redirectTo ?? "/dashboard"
+      if (!redirectTo) {
+        return siteUrl ? `${siteUrl}/dashboard` : "/dashboard"
+      }
+
+      if (redirectTo.startsWith("/")) {
+        return siteUrl ? `${siteUrl}${redirectTo}` : redirectTo
+      }
+
+      return redirectTo
     },
   },
   theme: {
