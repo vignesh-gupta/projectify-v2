@@ -87,6 +87,8 @@ The Projectify CLI enables users to interact with their Projectify workspace fro
 - `--verbose`: Show detailed output
 - `--help`: Show help for command
 
+**Project context precedence**: command-level `--project` option overrides global `--project`, which overrides `defaultProject` from config.
+
 ## Feature Requirements
 
 ### 1. Authentication Commands

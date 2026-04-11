@@ -601,6 +601,53 @@ export const createByApiKey = mutation({
   },
 })
 
+export const updateByApiKey = mutation({
+  args: {
+    apiKey: v.string(),
+    projectId: v.id("projects"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("development"),
+        v.literal("maintenance"),
+        v.literal("inactive")
+      )
+    ),
+    dueDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authenticateApiKey(ctx, args.apiKey)
+    requireScope(auth.scopes, "projects:write")
+
+    const membership = await requireProjectMembership(ctx, args.projectId, auth.userId)
+    if (membership.role === "member") {
+      throw new Error("Forbidden: only owners/admins can update projects")
+    }
+
+    const patchData: Partial<Doc<"projects">> & { updatedAt: number } = {
+      updatedAt: Date.now(),
+    }
+
+    if (args.title !== undefined) patchData.title = args.title
+    if (args.description !== undefined) patchData.description = args.description
+    if (args.status !== undefined) patchData.status = args.status
+    if (args.dueDate !== undefined) patchData.dueDate = args.dueDate
+
+    if (Object.keys(patchData).length === 1) {
+      throw new Error("At least one field is required to update")
+    }
+
+    await ctx.db.patch(args.projectId, patchData)
+    const updatedProject = await ctx.db.get(args.projectId)
+    if (!updatedProject) {
+      throw new Error("Project not found")
+    }
+
+    return { project: serializeProject(updatedProject) }
+  },
+})
+
 export const deleteByApiKey = mutation({
   args: {
     apiKey: v.string(),

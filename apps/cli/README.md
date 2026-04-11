@@ -103,6 +103,9 @@ pjfy projects create --interactive
 # Get project details
 pjfy projects get <id> [--json]
 
+# Update a project
+pjfy projects update <id> [--title "..."] [--description "..."] [--status maintenance] [--due-date 2026-12-31]
+
 # Delete a project
 pjfy projects delete <id> [--force]
 ```
@@ -111,17 +114,20 @@ pjfy projects delete <id> [--force]
 
 ```bash
 # List tasks
-pjfy tasks list --project <id> [--status <status>] [--priority <priority>] [--limit <n>] [--json]
+pjfy tasks list --project <id> [--status <status>] [--priority <priority>] [--assignee <userId>] [--limit <n>] [--json]
 
 # Create a task
-pjfy tasks create --project <id> --title "Fix bug" [--description "..."] [--status todo] [--priority medium] [--due-date 2026-04-10]
+pjfy tasks create --project <id> --title "Fix bug" [--description "..."] [--status todo] [--priority medium] [--assignee <userId>] [--due-date 2026-04-10]
 pjfy tasks create --project <id> --interactive
 
 # Get task details
 pjfy tasks get <id> [--json]
 
 # Update a task
-pjfy tasks update <id> [--title "..."] [--status done] [--priority high]
+pjfy tasks update <id> [--title "..."] [--status done] [--priority high] [--assignee <userId>]
+
+# Assign a task
+pjfy tasks assign <id> <userId>
 
 # Delete a task
 pjfy tasks delete <id> [--force]

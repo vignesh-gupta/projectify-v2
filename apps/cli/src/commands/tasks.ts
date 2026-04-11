@@ -34,11 +34,27 @@ interface TaskResponse {
   task: Task
 }
 
+interface GlobalOptions {
+  json?: boolean
+  noColor?: boolean
+  project?: string
+  verbose?: boolean
+}
+
 function configureClient(): void {
   const apiKey = requireAuth(config.getAll())
   const baseUrl = config.get("baseUrl") || DEFAULT_BASE_URL
   apiClient.setBaseUrl(baseUrl)
   apiClient.setApiKey(apiKey)
+}
+
+function getGlobalOptions(command: Command): GlobalOptions {
+  return command.optsWithGlobals() as GlobalOptions
+}
+
+function resolveProjectId(options: { project?: string }, command: Command): string | undefined {
+  const globalOpts = getGlobalOptions(command)
+  return options.project || globalOpts.project || config.get("defaultProject")
 }
 
 function toIsoDate(value?: number): string | undefined {
@@ -56,13 +72,14 @@ export function createTasksCommand(): Command {
     .option("--project <id>", "Filter by project ID")
     .option("--status <status>", "Filter by status (todo/in_progress/done)")
     .option("--priority <priority>", "Filter by priority (low/medium/high)")
+    .option("--assignee <userId>", "Filter by assignee user ID")
     .option("--limit <n>", "Limit number of results", "50")
     .option("--json", "Output in JSON format")
     .action(async (options, command) => {
       try {
         configureClient()
 
-        const projectId = options.project || config.get("defaultProject")
+        const projectId = resolveProjectId(options, command)
         if (!projectId) {
           throw new ValidationError(
             "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
@@ -74,11 +91,12 @@ export function createTasksCommand(): Command {
           projectId,
           status: options.status,
           priority: options.priority,
+          assigneeId: options.assignee,
           limit: Number.parseInt(options.limit, 10),
         })
         await stopSpinner(spinner, startedAt)
 
-        const globalOpts = command.parent?.opts() || {}
+        const globalOpts = getGlobalOptions(command)
         const useJSON = options.json || globalOpts.json
 
         if (useJSON) {
@@ -93,6 +111,7 @@ export function createTasksCommand(): Command {
             { key: "title", header: "Title", width: 35, format: (v) => truncate(String(v), 33) },
             { key: "status", header: "Status", width: 15, format: (v) => formatStatus(String(v), "task") },
             { key: "priority", header: "Priority", width: 12, format: (v) => formatPriority(String(v)) },
+            { key: "assigneeUserId", header: "Assignee", width: 20 },
             { key: "dueDate", header: "Due Date", width: 15, format: (v) => formatDate(v as string | number | undefined) },
           ],
           { noColor: globalOpts.noColor }
@@ -111,13 +130,14 @@ export function createTasksCommand(): Command {
     .option("--description <desc>", "Task description")
     .option("--status <status>", "Status (todo/in_progress/done)", "todo")
     .option("--priority <priority>", "Priority (low/medium/high)", "medium")
+    .option("--assignee <userId>", "Assign task to user ID")
     .option("--due-date <date>", "Due date (YYYY-MM-DD)")
     .option("--interactive", "Use interactive mode")
     .action(async (options, command) => {
       try {
         configureClient()
 
-        const projectId = options.project || config.get("defaultProject")
+        const projectId = resolveProjectId(options, command)
         if (!projectId) {
           throw new ValidationError(
             "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
@@ -131,6 +151,7 @@ export function createTasksCommand(): Command {
           status?: "todo" | "in_progress" | "done"
           priority?: "low" | "medium" | "high"
           dueDate?: string
+          assigneeUserId?: string
         }
 
         if (options.interactive) {
@@ -142,6 +163,7 @@ export function createTasksCommand(): Command {
             status: promptData.status,
             priority: promptData.priority,
             dueDate: toIsoDate(promptData.dueDate),
+            assigneeUserId: options.assignee,
           }
         } else {
           if (!options.title) {
@@ -155,6 +177,7 @@ export function createTasksCommand(): Command {
             status: options.status as "todo" | "in_progress" | "done",
             priority: options.priority as "low" | "medium" | "high",
             dueDate: options.dueDate ? new Date(options.dueDate).toISOString() : undefined,
+            assigneeUserId: options.assignee,
           }
         }
 
@@ -209,6 +232,7 @@ export function createTasksCommand(): Command {
     .option("--description <desc>", "New description")
     .option("--status <status>", "New status (todo/in_progress/done)")
     .option("--priority <priority>", "New priority (low/medium/high)")
+    .option("--assignee <userId>", "New assignee user ID")
     .option("--due-date <date>", "New due date (YYYY-MM-DD)")
     .action(async (id, options, command) => {
       try {
@@ -220,6 +244,7 @@ export function createTasksCommand(): Command {
         if (options.status) updates.status = options.status
         if (options.priority) updates.priority = options.priority
         if (options.dueDate) updates.dueDate = new Date(options.dueDate).toISOString()
+        if (options.assignee) updates.assigneeUserId = options.assignee
 
         if (Object.keys(updates).length === 0) {
           throw new ValidationError("At least one update option is required")
@@ -228,6 +253,23 @@ export function createTasksCommand(): Command {
         const { spinner, startedAt } = startSpinner("Updating task...")
         await apiClient.patch<TaskResponse>(`/api/tasks/${id}`, updates)
         await succeedSpinner(spinner, startedAt, chalk.green("Task updated"))
+      } catch (error) {
+        handleError(error, command.parent?.opts().verbose)
+      }
+    })
+
+  tasks
+    .command("assign <id> <userId>")
+    .description("Assign task to a user")
+    .action(async (id, userId, _options, command) => {
+      try {
+        configureClient()
+
+        const { spinner, startedAt } = startSpinner("Assigning task...")
+        await apiClient.patch<TaskResponse>(`/api/tasks/${id}`, {
+          assigneeUserId: userId,
+        })
+        await succeedSpinner(spinner, startedAt, chalk.green("Task assigned"))
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)
       }

@@ -130,9 +130,13 @@ function extractErrorMessage(payload: unknown): string | undefined {
 }
 
 function getFriendlyErrorMessage(status: number, payload: unknown): string {
-  const rawMessage = (extractErrorMessage(payload) || "").toLowerCase()
+  const extractedMessage = extractErrorMessage(payload)
+  const rawMessage = (extractedMessage || "").toLowerCase()
 
   if (status === 400 || status === 422) {
+    if (rawMessage.includes("required")) {
+      return "Missing required option or field"
+    }
     if (
       rawMessage.includes("argumentvalidationerror") ||
       rawMessage.includes("does not match validator") ||
@@ -143,22 +147,42 @@ function getFriendlyErrorMessage(status: number, payload: unknown): string {
     ) {
       return "Invalid ID"
     }
-    return "Invalid input"
+    return extractedMessage || "Invalid input"
   }
 
   if (status === 401 || status === 403) {
+    if (rawMessage.includes("scope")) {
+      return "API key does not have the required scope"
+    }
+    if (rawMessage.includes("expired")) {
+      return "API key expired. Run `pjfy auth login` to re-authenticate."
+    }
+    if (
+      rawMessage.includes("invalid api key") ||
+      rawMessage.includes("missing api key") ||
+      rawMessage.includes("revoked")
+    ) {
+      return "Invalid API key. Run `pjfy auth login` to re-authenticate."
+    }
+    if (status === 403) {
+      return "You don't have permission to access this resource"
+    }
     return "Authentication failed"
   }
 
   if (status === 404) {
-    return "Not found"
+    return extractedMessage || "Resource not found"
+  }
+
+  if (status === 408 || status === 504) {
+    return "Request timed out. Please try again."
   }
 
   if (status >= 500) {
-    return "Something went wrong"
+    return "Something went wrong on the server"
   }
 
-  return "Request failed"
+  return extractedMessage || "Request failed"
 }
 
 export const apiClient = new ApiClient()

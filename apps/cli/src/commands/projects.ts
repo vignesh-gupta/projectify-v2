@@ -280,6 +280,35 @@ export function createProjectsCommand(): Command {
     })
 
   projects
+    .command("update <id>")
+    .description("Update a project")
+    .option("--title <title>", "New title")
+    .option("--description <desc>", "New description")
+    .option("--status <status>", "New status (development/maintenance/inactive)")
+    .option("--due-date <date>", "New due date (YYYY-MM-DD)")
+    .action(async (id, options, command) => {
+      try {
+        configureClient()
+
+        const updates: Record<string, string> = {}
+        if (options.title) updates.title = options.title
+        if (options.description) updates.description = options.description
+        if (options.status) updates.status = options.status
+        if (options.dueDate) updates.dueDate = new Date(options.dueDate).toISOString()
+
+        if (Object.keys(updates).length === 0) {
+          throw new ValidationError("At least one update option is required")
+        }
+
+        const { spinner, startedAt } = startSpinner("Updating project...")
+        await apiClient.patch<ProjectResponse>(`/api/projects/${id}`, updates)
+        await succeedSpinner(spinner, startedAt, chalk.green("Project updated"))
+      } catch (error) {
+        handleError(error, command.parent?.opts().verbose)
+      }
+    })
+
+  projects
     .command("delete <id>")
     .alias("rm")
     .description("Delete a project")

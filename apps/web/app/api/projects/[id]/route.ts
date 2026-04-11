@@ -24,6 +24,12 @@ function toIsoDate(value?: number): string | undefined {
   return new Date(value).toISOString()
 }
 
+function toTimestamp(value?: string): number | undefined {
+  if (!value) return undefined
+  const parsed = new Date(value).getTime()
+  return Number.isNaN(parsed) ? undefined : parsed
+}
+
 function toErrorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Request failed"
   const lower = message.toLowerCase()
@@ -92,6 +98,48 @@ export async function DELETE(
     })
 
     return NextResponse.json(result)
+  } catch (error) {
+    return toErrorResponse(error)
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const apiKey = getBearerToken(request)
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Unauthorized", message: "Invalid or missing API key" },
+        { status: 401 }
+      )
+    }
+
+    const { id } = await context.params
+    const body = (await request.json()) as {
+      title?: string
+      description?: string
+      status?: "development" | "maintenance" | "inactive"
+      dueDate?: string
+    }
+
+    const client = getConvexClient()
+    const result = await client.mutation(api.projects.updateByApiKey, {
+      apiKey,
+      projectId: id as Id<"projects">,
+      title: body.title,
+      description: body.description,
+      status: body.status,
+      dueDate: toTimestamp(body.dueDate),
+    })
+
+    return NextResponse.json({
+      project: {
+        ...result.project,
+        dueDate: toIsoDate(result.project.dueDate),
+      },
+    })
   } catch (error) {
     return toErrorResponse(error)
   }
