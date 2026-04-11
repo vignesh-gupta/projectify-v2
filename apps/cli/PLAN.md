@@ -36,6 +36,7 @@ This file tracks CLI progress against `apps/cli/CLI-PRD.md` using the current im
 | Changelog | `changelog *` command set | **Done** | Implemented: `list`, `create`, `publish`. |
 | Resources | `resources *` command set | **Done** | Implemented: `list`, `upload`, `add-link`. |
 | Messages | `messages *` command set | **Done** | Implemented: `list`, `send`. |
+| ID selectors | Missing required IDs fallback to interactive selector | **Done** | Added selector fallback for project/task/feedback/changelog IDs where context is available. |
 | Config | `config set/get/list` | **Done** | Implemented with local/global support. |
 | Global flags | `--json`, `--no-color`, `--project`, `--verbose` | **Done** | Declared globally and `--project` precedence is normalized for project-scoped task commands. |
 | Error model | Auth/network/validation/resource friendly errors | **Partial** | Friendly mapping improved (scope/expired/invalid key, required fields, timeout, permission), with room for deeper backend-specific refinement. |

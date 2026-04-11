@@ -6,6 +6,7 @@ import { apiClient } from "../api-client.js"
 import { config, DEFAULT_BASE_URL } from "../config.js"
 import { handleError, requireAuth, ValidationError } from "../errors.js"
 import { formatDateTime, formatFileSize, formatJSON, formatTable, truncate } from "../utils/formatters.js"
+import { selectProjectId } from "../utils/selectors.js"
 import { startSpinner, stopSpinner, succeedSpinner } from "../utils/spinner.js"
 
 interface ResourceItem {
@@ -110,12 +111,9 @@ export function createResourcesCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         const { spinner, startedAt } = startSpinner("Fetching resources...")
         const result = await apiClient.get<ResourceListResponse>("/api/resources", {
@@ -169,12 +167,9 @@ export function createResourcesCommand(): Command {
     .action(async (filePath, options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         const absolutePath = path.resolve(filePath)
         if (!fs.existsSync(absolutePath)) {
@@ -218,12 +213,9 @@ export function createResourcesCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
         if (!options.name || !options.url) {
           throw new ValidationError("--name and --url are required")
         }

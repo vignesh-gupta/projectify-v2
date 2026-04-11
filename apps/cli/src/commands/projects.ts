@@ -15,6 +15,7 @@ import {
   promptProjectCreate,
   promptProjectSelect,
 } from "../utils/prompts.js"
+import { selectProjectId } from "../utils/selectors.js"
 import {
   failSpinner,
   startSpinner,
@@ -245,15 +246,16 @@ export function createProjectsCommand(): Command {
     })
 
   projects
-    .command("get <id>")
+    .command("get [id]")
     .description("Get project details")
     .option("--json", "Output in JSON format")
     .action(async (id, options, command) => {
       try {
         configureClient()
+        const projectId = id || (await selectProjectId(config.get("defaultProject")))
         const { spinner, startedAt } = startSpinner("Fetching project...")
         const result = await apiClient.get<ProjectResponse>(
-          `/api/projects/${id}`
+          `/api/projects/${projectId}`
         )
         await stopSpinner(spinner, startedAt)
 
@@ -280,7 +282,7 @@ export function createProjectsCommand(): Command {
     })
 
   projects
-    .command("update <id>")
+    .command("update [id]")
     .description("Update a project")
     .option("--title <title>", "New title")
     .option("--description <desc>", "New description")
@@ -289,6 +291,7 @@ export function createProjectsCommand(): Command {
     .action(async (id, options, command) => {
       try {
         configureClient()
+        const projectId = id || (await selectProjectId(config.get("defaultProject")))
 
         const updates: Record<string, string> = {}
         if (options.title) updates.title = options.title
@@ -301,7 +304,7 @@ export function createProjectsCommand(): Command {
         }
 
         const { spinner, startedAt } = startSpinner("Updating project...")
-        await apiClient.patch<ProjectResponse>(`/api/projects/${id}`, updates)
+        await apiClient.patch<ProjectResponse>(`/api/projects/${projectId}`, updates)
         await succeedSpinner(spinner, startedAt, chalk.green("Project updated"))
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)
@@ -309,17 +312,18 @@ export function createProjectsCommand(): Command {
     })
 
   projects
-    .command("delete <id>")
+    .command("delete [id]")
     .alias("rm")
     .description("Delete a project")
     .option("--force", "Skip confirmation prompt")
     .action(async (id, options, command) => {
       try {
         configureClient()
+        const projectId = id || (await selectProjectId(config.get("defaultProject")))
         const { spinner: fetchSpinner, startedAt: fetchStartedAt } =
           startSpinner("Fetching project...")
         const projectResult = await apiClient.get<ProjectResponse>(
-          `/api/projects/${id}`
+          `/api/projects/${projectId}`
         )
         await stopSpinner(fetchSpinner, fetchStartedAt)
 
@@ -337,7 +341,7 @@ export function createProjectsCommand(): Command {
         const result = await apiClient.delete<{
           success: boolean
           message?: string
-        }>(`/api/projects/${id}`)
+        }>(`/api/projects/${projectId}`)
 
         if (result.success) {
           await succeedSpinner(
@@ -364,7 +368,7 @@ export function createProjectCommand(): Command {
   const project = new Command("project").description("Set active project")
 
   project
-    .command("use <id>")
+    .command("use [id]")
     .description("Set the default project by ID")
     .action(async (id, _options, command) => {
       try {

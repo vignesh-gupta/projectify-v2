@@ -5,6 +5,7 @@ import { config, DEFAULT_BASE_URL } from "../config.js"
 import { handleError, requireAuth, ValidationError } from "../errors.js"
 import { formatDateTime, formatJSON, formatTable, truncate } from "../utils/formatters.js"
 import { promptText } from "../utils/prompts.js"
+import { selectProjectId } from "../utils/selectors.js"
 import { startSpinner, stopSpinner, succeedSpinner } from "../utils/spinner.js"
 
 interface MessageAuthor {
@@ -66,12 +67,9 @@ export function createMessagesCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         const { spinner, startedAt } = startSpinner("Fetching messages...")
         const result = await apiClient.get<MessageListResponse>("/api/messages", {
@@ -121,12 +119,9 @@ export function createMessagesCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         let content = options.content as string | undefined
         if (options.interactive) {

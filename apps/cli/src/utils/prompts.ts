@@ -164,6 +164,26 @@ export async function promptSelect<T extends string>(
 }
 
 /**
+ * Prompt for selection from labeled choices
+ */
+export async function promptSelectChoice<T extends string>(
+  message: string,
+  choices: Array<{ name: string; value: T }>,
+  defaultValue?: T
+): Promise<T> {
+  const { selected } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "selected",
+      message,
+      choices,
+      default: defaultValue,
+    },
+  ])
+  return selected
+}
+
+/**
  * Prompt for selecting a project from a list
  */
 export async function promptProjectSelect(

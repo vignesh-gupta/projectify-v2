@@ -11,7 +11,8 @@ import {
   formatTable,
   truncate,
 } from "../utils/formatters.js"
-import { promptConfirm, promptTaskCreate } from "../utils/prompts.js"
+import { promptConfirm, promptTaskCreate, promptText } from "../utils/prompts.js"
+import { selectProjectId, selectTaskId } from "../utils/selectors.js"
 import { failSpinner, startSpinner, stopSpinner, succeedSpinner } from "../utils/spinner.js"
 
 interface Task {
@@ -79,12 +80,9 @@ export function createTasksCommand(): Command {
       try {
         configureClient()
 
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         const { spinner, startedAt } = startSpinner("Fetching tasks...")
         const result = await apiClient.get<TaskListResponse>("/api/tasks", {
@@ -137,12 +135,9 @@ export function createTasksCommand(): Command {
       try {
         configureClient()
 
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         let taskData: {
           projectId: string
@@ -195,14 +190,21 @@ export function createTasksCommand(): Command {
     })
 
   tasks
-    .command("get <id>")
+    .command("get [id]")
     .description("Get task details")
+    .option("--project <id>", "Project ID for selector")
     .option("--json", "Output in JSON format")
     .action(async (id, options, command) => {
       try {
         configureClient()
+        const taskId =
+          id ||
+          (await selectTaskId(
+            resolveProjectId(options, command) ??
+              (await selectProjectId(config.get("defaultProject")))
+          ))
         const { spinner, startedAt } = startSpinner("Fetching task...")
-        const result = await apiClient.get<TaskResponse>(`/api/tasks/${id}`)
+        const result = await apiClient.get<TaskResponse>(`/api/tasks/${taskId}`)
         await stopSpinner(spinner, startedAt)
 
         const globalOpts = command.parent?.opts() || {}
@@ -226,8 +228,9 @@ export function createTasksCommand(): Command {
     })
 
   tasks
-    .command("update <id>")
+    .command("update [id]")
     .description("Update a task")
+    .option("--project <id>", "Project ID for selector")
     .option("--title <title>", "New title")
     .option("--description <desc>", "New description")
     .option("--status <status>", "New status (todo/in_progress/done)")
@@ -237,6 +240,12 @@ export function createTasksCommand(): Command {
     .action(async (id, options, command) => {
       try {
         configureClient()
+        const taskId =
+          id ||
+          (await selectTaskId(
+            resolveProjectId(options, command) ??
+              (await selectProjectId(config.get("defaultProject")))
+          ))
 
         const updates: Record<string, string> = {}
         if (options.title) updates.title = options.title
@@ -251,7 +260,7 @@ export function createTasksCommand(): Command {
         }
 
         const { spinner, startedAt } = startSpinner("Updating task...")
-        await apiClient.patch<TaskResponse>(`/api/tasks/${id}`, updates)
+        await apiClient.patch<TaskResponse>(`/api/tasks/${taskId}`, updates)
         await succeedSpinner(spinner, startedAt, chalk.green("Task updated"))
       } catch (error) {
         handleError(error, command.parent?.opts().verbose)
@@ -259,15 +268,27 @@ export function createTasksCommand(): Command {
     })
 
   tasks
-    .command("assign <id> <userId>")
+    .command("assign [id] [userId]")
     .description("Assign task to a user")
-    .action(async (id, userId, _options, command) => {
+    .option("--project <id>", "Project ID for selector")
+    .action(async (id, userId, options, command) => {
       try {
         configureClient()
+        const taskId =
+          id ||
+          (await selectTaskId(
+            resolveProjectId(options, command) ??
+              (await selectProjectId(config.get("defaultProject")))
+          ))
+        const resolvedUserId =
+          userId ||
+          (await promptText("Assignee user ID:", {
+            validate: (value) => value.trim().length > 0 || "User ID is required",
+          }))
 
         const { spinner, startedAt } = startSpinner("Assigning task...")
-        await apiClient.patch<TaskResponse>(`/api/tasks/${id}`, {
-          assigneeUserId: userId,
+        await apiClient.patch<TaskResponse>(`/api/tasks/${taskId}`, {
+          assigneeUserId: resolvedUserId.trim(),
         })
         await succeedSpinner(spinner, startedAt, chalk.green("Task assigned"))
       } catch (error) {
@@ -276,17 +297,24 @@ export function createTasksCommand(): Command {
     })
 
   tasks
-    .command("delete <id>")
+    .command("delete [id]")
     .alias("rm")
     .description("Delete a task")
+    .option("--project <id>", "Project ID for selector")
     .option("--force", "Skip confirmation prompt")
     .action(async (id, options, command) => {
       try {
         configureClient()
+        const taskId =
+          id ||
+          (await selectTaskId(
+            resolveProjectId(options, command) ??
+              (await selectProjectId(config.get("defaultProject")))
+          ))
         const { spinner: fetchSpinner, startedAt: fetchStartedAt } = startSpinner(
           "Fetching task..."
         )
-        const taskResult = await apiClient.get<TaskResponse>(`/api/tasks/${id}`)
+        const taskResult = await apiClient.get<TaskResponse>(`/api/tasks/${taskId}`)
         await stopSpinner(fetchSpinner, fetchStartedAt)
 
         if (!options.force) {
@@ -301,7 +329,7 @@ export function createTasksCommand(): Command {
 
         const { spinner, startedAt } = startSpinner("Deleting task...")
         const result = await apiClient.delete<{ success: boolean; message?: string }>(
-          `/api/tasks/${id}`
+          `/api/tasks/${taskId}`
         )
 
         if (result.success) {

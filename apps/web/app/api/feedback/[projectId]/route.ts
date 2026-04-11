@@ -65,9 +65,6 @@ export async function POST(
     const message =
       error instanceof Error ? error.message : "Failed to submit feedback."
 
-    return NextResponse.json(
-      { success: false, message },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, message }, { status: 500 })
   }
 }

@@ -144,7 +144,7 @@ pjfy feedback create --project <id> --title "Login issue" --description "Steps t
 pjfy feedback create --project <id> --interactive
 
 # Vote on feedback
-pjfy feedback vote <id>
+pjfy feedback vote [id]
 ```
 
 ### Changelog
@@ -158,7 +158,7 @@ pjfy changelog create --project <id> --version 1.2.0 --title "April Release" --c
 pjfy changelog create --project <id> --interactive
 
 # Publish changelog draft
-pjfy changelog publish <id>
+pjfy changelog publish [id]
 ```
 
 ### Resources
@@ -193,6 +193,8 @@ Available for all commands:
 - `--no-color` - Disable colored output
 - `--project <id>` - Specify project context
 - `--verbose` - Show detailed output
+
+If a required resource ID is omitted, the CLI opens an interactive selector (and may prompt for project context first).
 
 ## Configuration Files
 

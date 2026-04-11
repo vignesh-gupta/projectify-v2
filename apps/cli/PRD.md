@@ -89,6 +89,8 @@ The Projectify CLI enables users to interact with their Projectify workspace fro
 
 **Project context precedence**: command-level `--project` option overrides global `--project`, which overrides `defaultProject` from config.
 
+**ID selector behavior**: when a command requires an ID (project/task/feedback/changelog) and it is not provided, CLI should open an interactive selector when enough context is available (or prompt for missing project context first).
+
 ## Feature Requirements
 
 ### 1. Authentication Commands

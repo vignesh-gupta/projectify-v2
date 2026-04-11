@@ -5,6 +5,7 @@ import { config, DEFAULT_BASE_URL } from "../config.js"
 import { handleError, requireAuth, ValidationError } from "../errors.js"
 import { formatJSON, formatStatus, formatTable, truncate } from "../utils/formatters.js"
 import { promptSelect, promptText } from "../utils/prompts.js"
+import { selectFeedbackId, selectProjectId } from "../utils/selectors.js"
 import { startSpinner, stopSpinner, succeedSpinner } from "../utils/spinner.js"
 
 interface FeedbackItem {
@@ -68,12 +69,9 @@ export function createFeedbackCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         const { spinner, startedAt } = startSpinner("Fetching feedback...")
         const result = await apiClient.get<FeedbackListResponse>("/api/feedback", {
@@ -119,12 +117,9 @@ export function createFeedbackCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         let title = options.title as string | undefined
         let description = options.description as string | undefined
@@ -159,13 +154,20 @@ export function createFeedbackCommand(): Command {
     })
 
   feedback
-    .command("vote <id>")
+    .command("vote [id]")
     .description("Vote on feedback")
-    .action(async (id, _options, command) => {
+    .option("--project <id>", "Project ID for selector")
+    .action(async (id, options, command) => {
       try {
         configureClient()
+        const feedbackId =
+          id ||
+          (await selectFeedbackId(
+            resolveProjectId(options, command) ??
+              (await selectProjectId(config.get("defaultProject")))
+          ))
         const { spinner, startedAt } = startSpinner("Updating vote...")
-        const result = await apiClient.post<VoteResponse>(`/api/feedback/${id}/vote`, {})
+        const result = await apiClient.post<VoteResponse>(`/api/feedback/item/${feedbackId}/vote`, {})
         await succeedSpinner(
           spinner,
           startedAt,

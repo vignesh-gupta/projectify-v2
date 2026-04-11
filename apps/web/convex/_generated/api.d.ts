@@ -15,6 +15,7 @@ import type * as feedback from "../feedback.js";
 import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as lib_apiKeyAuth from "../lib/apiKeyAuth.js";
+import type * as lib_client from "../lib/client.js";
 import type * as memberships from "../memberships.js";
 import type * as mentions from "../mentions.js";
 import type * as messages from "../messages.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   folders: typeof folders;
   http: typeof http;
   "lib/apiKeyAuth": typeof lib_apiKeyAuth;
+  "lib/client": typeof lib_client;
   memberships: typeof memberships;
   mentions: typeof mentions;
   messages: typeof messages;

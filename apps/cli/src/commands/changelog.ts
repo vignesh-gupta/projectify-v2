@@ -5,6 +5,7 @@ import { config, DEFAULT_BASE_URL } from "../config.js"
 import { handleError, requireAuth, ValidationError } from "../errors.js"
 import { formatDateTime, formatJSON, formatStatus, formatTable, truncate } from "../utils/formatters.js"
 import { promptText } from "../utils/prompts.js"
+import { selectChangelogId, selectProjectId } from "../utils/selectors.js"
 import { startSpinner, stopSpinner, succeedSpinner } from "../utils/spinner.js"
 
 interface ChangelogEntry {
@@ -69,12 +70,9 @@ export function createChangelogCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         const { spinner, startedAt } = startSpinner("Fetching changelog entries...")
         const result = await apiClient.get<ChangelogListResponse>("/api/changelog", {
@@ -119,12 +117,9 @@ export function createChangelogCommand(): Command {
     .action(async (options, command) => {
       try {
         configureClient()
-        const projectId = resolveProjectId(options, command)
-        if (!projectId) {
-          throw new ValidationError(
-            "Project ID required. Use --project or set default with `pjfy config set defaultProject <id>`"
-          )
-        }
+        const projectId =
+          resolveProjectId(options, command) ??
+          (await selectProjectId(config.get("defaultProject")))
 
         let version = options.version as string | undefined
         let title = options.title as string | undefined
@@ -167,13 +162,24 @@ export function createChangelogCommand(): Command {
     })
 
   changelog
-    .command("publish <id>")
+    .command("publish [id]")
     .description("Publish a changelog draft")
-    .action(async (id, _options, command) => {
+    .option("--project <id>", "Project ID for selector")
+    .action(async (id, options, command) => {
       try {
         configureClient()
+        const changelogId =
+          id ||
+          (await selectChangelogId(
+            resolveProjectId(options, command) ??
+              (await selectProjectId(config.get("defaultProject"))),
+            "draft"
+          ))
         const { spinner, startedAt } = startSpinner("Publishing changelog...")
-        const result = await apiClient.post<ChangelogPublishResponse>(`/api/changelog/${id}/publish`, {})
+        const result = await apiClient.post<ChangelogPublishResponse>(
+          `/api/changelog/entry/${changelogId}/publish`,
+          {}
+        )
         await succeedSpinner(
           spinner,
           startedAt,
