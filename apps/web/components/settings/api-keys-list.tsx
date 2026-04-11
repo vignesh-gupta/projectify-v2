@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
@@ -120,6 +121,11 @@ export function ApiKeysList() {
               <CardDescription>
                 Manage your API keys for CLI and MCP integrations
               </CardDescription>
+              <div className="mt-3">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/docs/mcp">Open MCP docs</Link>
+                </Button>
+              </div>
             </div>
             <CreateApiKeyDialog
               onCreateKey={handleCreateKey}
