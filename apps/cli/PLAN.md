@@ -41,8 +41,8 @@ This file tracks CLI progress against `apps/cli/CLI-PRD.md` using the current im
 | Global flags | `--json`, `--no-color`, `--project`, `--verbose` | **Done** | Declared globally and `--project` precedence is normalized for project-scoped task commands. |
 | Error model | Auth/network/validation/resource friendly errors | **Partial** | Friendly mapping improved (scope/expired/invalid key, required fields, timeout, permission), with room for deeper backend-specific refinement. |
 | Distribution | npm package + executable bin | **Done** | CLI package + bin entrypoint present. |
-| Distribution | Standalone binaries (Win/macOS/Linux) | **Pending** | Not implemented. |
-| CI/CD release | Publish/release automation | **Pending** | Not implemented in CLI scope yet. |
+| Distribution | Standalone binaries (Win/macOS/Linux) | **Done** | Added `build:binaries` (pkg) to generate Windows/macOS/Linux binaries in `releases/`. |
+| CI/CD release | Publish/release automation | **Done** | Added release workflow (`.github/workflows/cli-release.yml`) and release scripts. |
 | Testing | Unit/integration/E2E coverage | **Pending** | No test suite configured for CLI commands. |
 
 ## Done features
@@ -58,8 +58,7 @@ This file tracks CLI progress against `apps/cli/CLI-PRD.md` using the current im
 10. UX helpers: colors, tables, prompts, spinners, JSON output.
 
 ## Pending features (for PRD parity)
-1. Standalone binary builds + release assets.
-2. CLI test coverage (unit/integration/E2E) and release automation.
+1. CLI test coverage (unit/integration/E2E).
 
 ## Good-to-have features (Proposed)
 1. Shell completion generation (`bash`, `zsh`, `fish`, PowerShell).
@@ -90,8 +89,8 @@ This file tracks CLI progress against `apps/cli/CLI-PRD.md` using the current im
 
 ### Phase 3 - Release hardening
 - Add CLI-focused tests (unit + integration + smoke E2E).
-- Add binary build pipeline for Win/macOS/Linux.
-- Add release automation (versioning, npm publish, binary artifacts).
+- ✅ Add binary build pipeline for Win/macOS/Linux.
+- ✅ Add release automation (versioning, npm publish, binary artifacts).
 - Expand user docs with command examples and troubleshooting matrix.
 
 ### Phase 4 - Good-to-have enhancements

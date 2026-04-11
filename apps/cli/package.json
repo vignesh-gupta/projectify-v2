@@ -4,19 +4,28 @@
   "description": "CLI for Projectify - Manage projects and tasks from the terminal",
   "type": "module",
   "private": false,
+  "publishConfig": {
+    "access": "restricted"
+  },
   "bin": {
     "pjfy": "./bin/pjfy.js"
   },
   "files": [
     "dist",
-    "bin"
+    "bin",
+    "README.md"
   ],
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
+    "build:binaries": "node scripts/build-binaries.mjs",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release:check": "pnpm lint && pnpm typecheck && pnpm build && pnpm build:binaries",
+    "release:dry-run": "pnpm build && pnpm pack --pack-destination releases",
+    "release:publish": "pnpm release:check && pnpm publish --access restricted --no-git-checks",
+    "prepublishOnly": "pnpm release:check"
   },
   "keywords": [
     "cli",
@@ -40,6 +49,7 @@
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9.39.2",
+    "pkg": "^5.8.1",
     "tsup": "^8.4.2",
     "typescript": "^5.9.3"
   },

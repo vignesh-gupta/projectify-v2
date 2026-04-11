@@ -12,6 +12,8 @@ npm install -g @projectify/cli
 pnpm add -g @projectify/cli
 ```
 
+This package is published as a **restricted (private) npm package**.
+
 ### From source
 
 ```bash
@@ -312,6 +314,30 @@ npm link
 pjfy --help
 pjfy auth status
 ```
+
+## NPM Publish Checklist
+
+- [ ] Ensure your npm account has access to publish `@projectify/cli` as a restricted package
+- [ ] Set `NPM_TOKEN` in GitHub repo secrets (for workflow-based publish)
+- [ ] Bump CLI version in `apps/cli/package.json`
+- [ ] Build and validate release artifacts:
+  - `pnpm --filter @projectify/cli release:check`
+- [ ] Verify package contents:
+  - `pnpm --filter @projectify/cli release:dry-run`
+- [ ] Publish manually (local):
+  - `pnpm --filter @projectify/cli release:publish`
+- [ ] Or publish via CI:
+  - Create and push tag `cli-v<version>` (example: `cli-v1.0.1`)
+- [ ] Confirm package visibility and installability from npm
+
+### Release outputs
+
+- npm package contains only `dist`, `bin`, and `README.md`
+- Source maps are disabled in build output to avoid source disclosure
+- Standalone binaries are generated to `apps/cli/releases/` for:
+  - `pjfy-win-x64.exe`
+  - `pjfy-macos-x64`
+  - `pjfy-linux-x64`
 
 ## Architecture
 
