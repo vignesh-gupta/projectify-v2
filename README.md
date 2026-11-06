@@ -16,6 +16,7 @@ Welcome to Projectify, the ultimate project management tool designed specificall
 - [x] 📃**Changelog** : Maintain a changelog for projects and integrate it seamlessly with your website to keep users updated on changes.
 - [x] 💬**Simple Group Messaging** : Communicate with your team effortlessly using our built-in group messaging feature.
 - [x] 🖥️**Command-Line Interface (CLI)** : Manage projects and tasks from the terminal with `pjfy` CLI tool.
+- [x] 🤖**MCP Server** : Let your Agent plan and manage your work!
 - [x] 🎁 many more...
 
 ## Tech Stack
